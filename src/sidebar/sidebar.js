@@ -48,12 +48,29 @@ function initializeSidebar() {
 }
 
 // Try immediate initialization
+console.log('Sidebar script loaded, document ready state:', document.readyState);
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeSidebar);
+    console.log('Document still loading, waiting for DOMContentLoaded');
+    document.addEventListener('DOMContentLoaded', () => {
+        console.log('DOMContentLoaded fired, initializing sidebar');
+        initializeSidebar();
+    });
 } else {
     // DOM is already ready, initialize now
-    setTimeout(initializeSidebar, 50);
+    console.log('DOM already ready, initializing immediately');
+    setTimeout(initializeSidebar, 100);
 }
+
+// Also try initialization after a longer delay as backup
+setTimeout(() => {
+    const container = document.getElementById('d365-sidebar-container');
+    const leList = document.getElementById('legalEntitiesList');
+    if (container && !leList?.innerHTML) {
+        console.log('Backup initialization...');
+        initializeSidebar();
+    }
+}, 500);
 
 function attachEventListeners() {
     // Form submission
@@ -309,20 +326,109 @@ function showResults() {
 
 function downloadFile(event) {
     event.preventDefault();
+
     const data = {
+        exportDate: new Date().toLocaleString(),
         legalEntities: sidebarState.selectedLE,
         modules: sidebarState.selectedModules,
-        format: sidebarState.selectedFormat,
-        timestamp: new Date().toISOString()
+        configuration: generateConfigurationData()
     };
 
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `d365-config-${Date.now()}.${sidebarState.selectedFormat}`;
-    a.click();
-    URL.revokeObjectURL(url);
+    let content, mimeType, extension;
+
+    switch (sidebarState.selectedFormat) {
+        case 'json':
+            content = JSON.stringify(data, null, 2);
+            mimeType = 'application/json';
+            extension = 'json';
+            break;
+
+        case 'csv':
+            content = generateCSV(data);
+            mimeType = 'text/csv;charset=utf-8;';
+            extension = 'csv';
+            break;
+
+        case 'txt':
+            content = generateTextReport(data);
+            mimeType = 'text/plain;charset=utf-8;';
+            extension = 'txt';
+            break;
+
+        case 'xlsx':
+        default:
+            // For Excel, we'll create a simple CSV that Excel can open
+            content = generateCSV(data);
+            mimeType = 'text/csv;charset=utf-8;';
+            extension = 'csv'; // Save as CSV which Excel can open
+            break;
+    }
+
+    try {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.setAttribute('href', url);
+        link.setAttribute('download', `d365-config-${Date.now()}.${extension}`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        showAlert('✓ File downloaded successfully!', 'success');
+    } catch (error) {
+        console.error('Download error:', error);
+        showAlert('Error downloading file: ' + error.message, 'error');
+    }
+}
+
+function generateConfigurationData() {
+    return {
+        total: sidebarState.selectedLE.length + sidebarState.selectedModules.length,
+        legalEntities: sidebarState.selectedLE.length,
+        modules: sidebarState.selectedModules.length
+    };
+}
+
+function generateCSV(data) {
+    let csv = 'Field,Value\n';
+    csv += `Export Date,"${data.exportDate}"\n`;
+    csv += `Legal Entities,"${data.legalEntities.join(', ')}"\n`;
+    csv += `Modules,"${data.modules.join(', ')}"\n`;
+    csv += `Total Items,"${data.configuration.total}"\n`;
+    csv += '\n';
+    csv += 'Configuration Details\n';
+    csv += `LEs Count,${data.configuration.legalEntities}\n`;
+    csv += `Modules Count,${data.configuration.modules}\n`;
+    return csv;
+}
+
+function generateTextReport(data) {
+    let text = '═══════════════════════════════════════════════════════════\n';
+    text += '          D365 FINANCE CONFIGURATION EXPORT REPORT\n';
+    text += '═══════════════════════════════════════════════════════════\n\n';
+    text += `Export Date: ${data.exportDate}\n`;
+    text += `Source: Dynamics 365 Finance\n\n`;
+
+    text += 'LEGAL ENTITIES:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+    data.legalEntities.forEach(le => {
+        text += `  • ${le}\n`;
+    });
+
+    text += '\nMODULES:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+    data.modules.forEach(mod => {
+        text += `  • ${mod}\n`;
+    });
+
+    text += '\nSUMMARY:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+    text += `Total Legal Entities: ${data.configuration.legalEntities}\n`;
+    text += `Total Modules: ${data.configuration.modules}\n`;
+    text += `Total Items: ${data.configuration.total}\n`;
+
+    return text;
 }
 
 function resetForm() {
