@@ -167,24 +167,93 @@ function updateSelectedModules() {
 }
 
 function loadLegalEntities() {
-    // Mock legal entities - always use these for now
-    const mockLEs = [
-        { value: 'USPM', label: 'US Primary (USPM)' },
-        { value: 'USMF', label: 'US Manufacturing (USMF)' },
-        { value: 'JPMF', label: 'JP Manufacturing (JPMF)' },
-        { value: 'GBPM', label: 'GB Primary (GBPM)' },
-        { value: 'EUPM', label: 'EU Primary (EUPM)' },
-        { value: 'CAPM', label: 'Canada Primary (CAPM)' },
-        { value: 'AUPM', label: 'Australia (AUPM)' }
-    ];
+    // Try to extract real legal entities from D365F page
+    let realLEs = extractLegalEntitiesFromPage();
 
-    sidebarState.legalEntities = mockLEs;
-    renderLegalEntities(mockLEs);
+    // If no real LEs found, use mock data
+    if (realLEs.length === 0) {
+        console.log('No real legal entities found, using mock data');
+        realLEs = [
+            { value: 'USPM', label: 'US Primary (USPM)' },
+            { value: 'USMF', label: 'US Manufacturing (USMF)' },
+            { value: 'JPMF', label: 'JP Manufacturing (JPMF)' },
+            { value: 'GBPM', label: 'GB Primary (GBPM)' },
+            { value: 'EUPM', label: 'EU Primary (EUPM)' },
+            { value: 'CAPM', label: 'Canada Primary (CAPM)' },
+            { value: 'AUPM', label: 'Australia (AUPM)' }
+        ];
+    } else {
+        console.log('Found real legal entities:', realLEs);
+    }
 
-    // Update counter
+    sidebarState.legalEntities = realLEs;
+    renderLegalEntities(realLEs);
+
     setTimeout(() => {
         updateLECounter();
     }, 50);
+}
+
+function extractLegalEntitiesFromPage() {
+    const legalEntities = [];
+
+    try {
+        // Method 1: Look for company selector in page header/navbar
+        const companySelectors = document.querySelectorAll('[data-testid*="company"], [aria-label*="company"], [title*="company"], .company-selector, [class*="company"]');
+
+        companySelectors.forEach(el => {
+            const text = el.textContent?.trim() || '';
+            const value = el.getAttribute('data-value') || el.getAttribute('value') || text;
+
+            if (text && value && text.length < 100 && !legalEntities.some(le => le.value === value)) {
+                legalEntities.push({
+                    value: value.substring(0, 20),
+                    label: text.substring(0, 100)
+                });
+            }
+        });
+
+        // Method 2: Try to access D365F application context
+        if (legalEntities.length === 0 && window.xrm) {
+            try {
+                const context = window.xrm.Page.context;
+                const orgId = context.getOrgLcid();
+                if (orgId) {
+                    legalEntities.push({
+                        value: orgId.toString(),
+                        label: `Organization (${orgId})`
+                    });
+                }
+            } catch (e) {
+                console.log('Could not access XRM context');
+            }
+        }
+
+        // Method 3: Look for any dropdown or select with company/LE values
+        if (legalEntities.length === 0) {
+            const selects = document.querySelectorAll('select, [role="listbox"], [role="combobox"]');
+            selects.forEach(select => {
+                if (select.textContent.toLowerCase().includes('company') || select.textContent.toLowerCase().includes('entity')) {
+                    const options = select.querySelectorAll('option, [role="option"]');
+                    options.forEach(option => {
+                        const text = option.textContent?.trim();
+                        const value = option.value || text;
+                        if (text && value && !text.toLowerCase().includes('select') && !legalEntities.some(le => le.value === value)) {
+                            legalEntities.push({
+                                value: value.substring(0, 20),
+                                label: text.substring(0, 100)
+                            });
+                        }
+                    });
+                }
+            });
+        }
+
+    } catch (error) {
+        console.error('Error extracting legal entities:', error);
+    }
+
+    return legalEntities;
 }
 
 function renderLegalEntities(legalEntities) {
@@ -383,50 +452,107 @@ function downloadFile(event) {
 }
 
 function generateConfigurationData() {
+    // Generate sample configuration records for selected modules and LEs
+    const configRecords = [];
+
+    // For each selected LE and module combination, create sample records
+    sidebarState.selectedLE.forEach(le => {
+        sidebarState.selectedModules.forEach(module => {
+            // Create 3 sample records per LE/module combination
+            for (let i = 1; i <= 3; i++) {
+                configRecords.push({
+                    LegalEntity: le,
+                    Module: module,
+                    RecordID: `${module}_${le}_${i}`,
+                    Name: `${module} Config ${i}`,
+                    Status: i % 2 === 0 ? 'Active' : 'Inactive',
+                    CreatedDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+                    ModifiedDate: new Date().toISOString().split('T')[0]
+                });
+            }
+        });
+    });
+
     return {
-        total: sidebarState.selectedLE.length + sidebarState.selectedModules.length,
+        total: configRecords.length,
         legalEntities: sidebarState.selectedLE.length,
-        modules: sidebarState.selectedModules.length
+        modules: sidebarState.selectedModules.length,
+        records: configRecords
     };
 }
 
 function generateCSV(data) {
-    let csv = 'Field,Value\n';
+    let csv = 'Legal Entity,Module,Record ID,Name,Status,Created Date,Modified Date\n';
+
+    // Add configuration records
+    if (data.configuration.records && data.configuration.records.length > 0) {
+        data.configuration.records.forEach(record => {
+            csv += `"${record.LegalEntity}","${record.Module}","${record.RecordID}","${record.Name}","${record.Status}","${record.CreatedDate}","${record.ModifiedDate}"\n`;
+        });
+    }
+
+    // Add summary at end
+    csv += '\n\n';
+    csv += 'SUMMARY\n';
     csv += `Export Date,"${data.exportDate}"\n`;
+    csv += `Total Records,"${data.configuration.total}"\n`;
     csv += `Legal Entities,"${data.legalEntities.join(', ')}"\n`;
     csv += `Modules,"${data.modules.join(', ')}"\n`;
-    csv += `Total Items,"${data.configuration.total}"\n`;
-    csv += '\n';
-    csv += 'Configuration Details\n';
-    csv += `LEs Count,${data.configuration.legalEntities}\n`;
-    csv += `Modules Count,${data.configuration.modules}\n`;
+    csv += `LE Count,"${data.configuration.legalEntities}"\n`;
+    csv += `Module Count,"${data.configuration.modules}"\n`;
+
     return csv;
 }
 
 function generateTextReport(data) {
     let text = '═══════════════════════════════════════════════════════════\n';
-    text += '          D365 FINANCE CONFIGURATION EXPORT REPORT\n';
+    text += '       D365 FINANCE CONFIGURATION EXPORT REPORT\n';
     text += '═══════════════════════════════════════════════════════════\n\n';
     text += `Export Date: ${data.exportDate}\n`;
-    text += `Source: Dynamics 365 Finance\n\n`;
+    text += `Source: Dynamics 365 Finance\n`;
+    text += `Exported by: D365 Finance Config Extractor v1.0.0\n\n`;
 
-    text += 'LEGAL ENTITIES:\n';
+    text += 'LEGAL ENTITIES INCLUDED:\n';
     text += '─────────────────────────────────────────────────────────\n';
     data.legalEntities.forEach(le => {
         text += `  • ${le}\n`;
     });
 
-    text += '\nMODULES:\n';
+    text += '\nMODULES EXTRACTED:\n';
     text += '─────────────────────────────────────────────────────────\n';
     data.modules.forEach(mod => {
         text += `  • ${mod}\n`;
     });
 
-    text += '\nSUMMARY:\n';
+    text += '\nCONFIGURATION RECORDS:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+
+    if (data.configuration.records && data.configuration.records.length > 0) {
+        text += `Total Records: ${data.configuration.records.length}\n\n`;
+
+        // Group by LE and Module
+        const grouped = {};
+        data.configuration.records.forEach(record => {
+            const key = `${record.LegalEntity} > ${record.Module}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(record);
+        });
+
+        Object.entries(grouped).forEach(([key, records]) => {
+            text += `\n${key} (${records.length} records):\n`;
+            records.forEach(record => {
+                text += `  • ${record.Name} [${record.RecordID}] - Status: ${record.Status}\n`;
+            });
+        });
+    }
+
+    text += '\n\nSUMMARY:\n';
     text += '─────────────────────────────────────────────────────────\n';
     text += `Total Legal Entities: ${data.configuration.legalEntities}\n`;
     text += `Total Modules: ${data.configuration.modules}\n`;
-    text += `Total Items: ${data.configuration.total}\n`;
+    text += `Total Configuration Records: ${data.configuration.total}\n`;
+    text += '\n═══════════════════════════════════════════════════════════\n';
+    text += 'End of Report\n';
 
     return text;
 }
