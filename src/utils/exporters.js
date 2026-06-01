@@ -34,7 +34,7 @@ class ExportManager {
     }
 
     static _generateExcelData(data) {
-        // Create structured data for Excel export
+        // Create structured data for Excel export with module organization
         const workbook = {
             SheetNames: [],
             Sheets: {}
@@ -44,13 +44,44 @@ class ExportManager {
         workbook.SheetNames.push('Metadata');
         workbook.Sheets['Metadata'] = this._createMetadataSheet(data);
 
-        // Add sheet for each entity
+        // Add sheet for each module and entity
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
 
-        for (const entity of Object.keys(data[legalEntities[0]] || {})) {
-            const sheetName = entity.substr(0, 31); // Excel sheet name limit
-            workbook.SheetNames.push(sheetName);
-            workbook.Sheets[sheetName] = this._createEntitySheet(data, entity);
+        if (legalEntities.length > 0) {
+            const firstLE = legalEntities[0];
+
+            // Check if data is organized by module
+            const isModuleData = Object.keys(firstLE in data ? data[firstLE] : {}).length > 0 &&
+                                 typeof data[firstLE][Object.keys(data[firstLE])[0]] === 'object' &&
+                                 data[firstLE][Object.keys(data[firstLE])[0]].records === undefined;
+
+            if (isModuleData) {
+                // Module-based organization
+                for (const le of legalEntities) {
+                    for (const module in data[le]) {
+                        for (const entity in data[le][module]) {
+                            const sheetName = `${module.substr(0, 10)}_${entity.substr(0, 15)}`.substr(0, 31);
+                            if (!workbook.SheetNames.includes(sheetName)) {
+                                workbook.SheetNames.push(sheetName);
+                                workbook.Sheets[sheetName] = this._createModuleEntitySheet(data, module, entity);
+                            }
+                        }
+                    }
+                }
+            } else {
+                // Legacy entity-based organization
+                for (const entity of Object.keys(data[firstLE] || {})) {
+                    const sheetName = entity.substr(0, 31);
+                    workbook.SheetNames.push(sheetName);
+                    workbook.Sheets[sheetName] = this._createEntitySheet(data, entity);
+                }
+            }
+        }
+
+        // Add module summary sheet
+        if (data._comparisons && data._comparisons.moduleComparisons) {
+            workbook.SheetNames.push('Module_Summary');
+            workbook.Sheets['Module_Summary'] = this._createModuleSummarySheet(data._comparisons);
         }
 
         // Add comparison sheet if available
@@ -60,6 +91,73 @@ class ExportManager {
         }
 
         return workbook;
+    }
+
+    static _createModuleEntitySheet(data, module, entity) {
+        const sheet = {};
+        const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
+
+        let row = 1;
+
+        // Header
+        const header = ['Module', 'LegalEntity', 'Record ID', ...Object.keys(data[legalEntities[0]][module]?.[entity]?.records?.[0] || {})];
+        header.forEach((col, idx) => {
+            const cellRef = String.fromCharCode(65 + idx) + row;
+            sheet[cellRef] = { v: col, t: 's' };
+        });
+
+        row++;
+
+        // Data rows
+        for (const le of legalEntities) {
+            const entityData = data[le][module]?.[entity];
+            if (entityData && entityData.records) {
+                for (const record of entityData.records) {
+                    sheet[`A${row}`] = { v: module, t: 's' };
+                    sheet[`B${row}`] = { v: le, t: 's' };
+                    sheet[`C${row}`] = { v: record.id || '', t: 's' };
+
+                    let colIdx = 3;
+                    for (const [key, value] of Object.entries(record)) {
+                        if (key !== 'id') {
+                            const cellRef = String.fromCharCode(65 + colIdx) + row;
+                            sheet[cellRef] = { v: value, t: typeof value === 'number' ? 'n' : 's' };
+                            colIdx++;
+                        }
+                    }
+                    row++;
+                }
+            }
+        }
+
+        sheet['!ref'] = `A1:${String.fromCharCode(64 + header.length)}${row}`;
+        return sheet;
+    }
+
+    static _createModuleSummarySheet(comparisons) {
+        const sheet = {};
+        let row = 1;
+
+        sheet[`A${row}`] = { v: 'Module', t: 's' };
+        sheet[`B${row}`] = { v: 'Status', t: 's' };
+        sheet[`C${row}`] = { v: 'Entities', t: 's' };
+        sheet[`D${row}`] = { v: 'Matches', t: 's' };
+        sheet[`E${row}`] = { v: 'Differences', t: 's' };
+
+        row++;
+
+        for (const module in comparisons.moduleComparisons || {}) {
+            const stats = comparisons.moduleComparisons[module];
+            sheet[`A${row}`] = { v: module, t: 's' };
+            sheet[`B${row}`] = { v: 'Ready', t: 's' };
+            sheet[`C${row}`] = { v: stats.entityCount, t: 'n' };
+            sheet[`D${row}`] = { v: stats.matches, t: 'n' };
+            sheet[`E${row}`] = { v: stats.differences, t: 'n' };
+            row++;
+        }
+
+        sheet['!ref'] = `A1:E${row}`;
+        return sheet;
     }
 
     static _createMetadataSheet(data) {
@@ -160,17 +258,20 @@ class ExportManager {
     }
 
     static _generateCSV(data) {
-        let csv = 'LegalEntity,Entity,RecordID,Field,Value\n';
+        let csv = 'LegalEntity,Module,Entity,RecordID,Field,Value\n';
 
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
 
         for (const le of legalEntities) {
-            for (const entity in data[le]) {
-                if (data[le][entity] && data[le][entity].records) {
-                    for (const record of data[le][entity].records) {
-                        for (const field in record) {
-                            const value = this._escapeCSV(record[field]);
-                            csv += `"${le}","${entity}","${record.id}","${field}","${value}"\n`;
+            for (const module in data[le]) {
+                for (const entity in data[le][module]) {
+                    const moduleData = data[le][module][entity];
+                    if (moduleData && moduleData.records) {
+                        for (const record of moduleData.records) {
+                            for (const field in record) {
+                                const value = this._escapeCSV(record[field]);
+                                csv += `"${le}","${module}","${entity}","${record.id || ''}","${field}","${value}"\n`;
+                            }
                         }
                     }
                 }
@@ -178,14 +279,12 @@ class ExportManager {
         }
 
         if (data._comparisons) {
-            csv += '\n\n# COMPARISON REPORT\n';
-            csv += 'Entity,Comparison,LE1Count,LE2Count,Difference,Match\n';
+            csv += '\n\n# MODULE COMPARISON REPORT\n';
+            csv += 'Module,Entities,Matches,Differences\n';
 
-            for (const entity in data._comparisons.details) {
-                for (const comparison in data._comparisons.details[entity]) {
-                    const details = data._comparisons.details[entity][comparison];
-                    csv += `"${entity}","${comparison}","${details.le1Count}","${details.le2Count}","${details.differences}","${details.match}"\n`;
-                }
+            for (const module in data._comparisons.moduleComparisons || {}) {
+                const stats = data._comparisons.moduleComparisons[module];
+                csv += `"${module}","${stats.entityCount}","${stats.matches}","${stats.differences}"\n`;
             }
         }
 
@@ -194,30 +293,43 @@ class ExportManager {
 
     static _generateText(data) {
         let text = '╔════════════════════════════════════════════════════════════════╗\n';
-        text += '║     D365 FINANCE CONFIGURATION EXPORT REPORT                    ║\n';
+        text += '║   D365 FINANCE MULTI-MODULE CONFIGURATION EXPORT REPORT        ║\n';
         text += '╚════════════════════════════════════════════════════════════════╝\n\n';
 
         text += `Generated: ${new Date().toLocaleString()}\n`;
         text += `Source: Dynamics 365 Finance\n`;
-        text += `Total Legal Entities: ${Object.keys(data).filter(k => k !== '_comparisons').length}\n\n`;
-
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
+        text += `Total Legal Entities: ${legalEntities.length}\n`;
+        text += `Total Modules: ${data._comparisons?.summary?.modulesCount || 0}\n\n`;
+
+        // Module summary
+        if (data._comparisons?.moduleComparisons) {
+            text += '╔═ MODULE SUMMARY ═══════════════════════════════════════════════╗\n';
+            for (const module in data._comparisons.moduleComparisons) {
+                const stats = data._comparisons.moduleComparisons[module];
+                text += `\n  ${module}\n`;
+                text += `    Entities: ${stats.entityCount} | Matches: ${stats.matches} | Differences: ${stats.differences}\n`;
+            }
+            text += '\n' + '╚' + '═'.repeat(68) + '╝\n\n';
+        }
 
         for (const le of legalEntities) {
-            text += `\n┌─ LEGAL ENTITY: ${le} ${'─'.repeat(Math.max(0, 60 - le.length))}┐\n`;
+            text += `\n┌─ LEGAL ENTITY: ${le} ${'─'.repeat(Math.max(0, 52 - le.length))}┐\n`;
 
-            for (const entity in data[le]) {
-                const entityData = data[le][entity];
-                text += `\n  Entity: ${entity}\n`;
-                text += `  Records: ${entityData?.records?.length || 0}\n`;
+            for (const module in data[le]) {
+                text += `\n  Module: ${module}\n`;
                 text += '  ' + '─'.repeat(60) + '\n';
 
-                if (entityData && entityData.records) {
-                    for (const record of entityData.records) {
-                        text += `\n    [${record.id}]\n`;
-                        for (const field in record) {
+                for (const entity in data[le][module]) {
+                    const entityData = data[le][module][entity];
+                    text += `\n    Entity: ${entity}\n`;
+                    text += `    Records: ${entityData?.records?.length || 0}\n`;
+
+                    if (entityData && entityData.records && entityData.records.length > 0) {
+                        const sample = entityData.records[0];
+                        for (const field in sample) {
                             if (field !== 'id') {
-                                text += `      ${field}: ${record[field]}\n`;
+                                text += `      ${field}: ${sample[field]}\n`;
                             }
                         }
                     }
@@ -229,20 +341,22 @@ class ExportManager {
 
         if (data._comparisons) {
             text += '\n\n╔═══════════════════════════════════════════════════════════════════╗\n';
-            text += '║                       COMPARISON REPORT                           ║\n';
+            text += '║                   MODULE COMPARISON REPORT                      ║\n';
             text += '╚═══════════════════════════════════════════════════════════════════╝\n\n';
 
-            for (const entity in data._comparisons.details) {
-                text += `\n[${entity}]\n`;
+            for (const module in data._comparisons.moduleComparisons || {}) {
+                const mc = data._comparisons.moduleComparisons[module];
+                text += `\n[${module}]\n`;
                 text += '─'.repeat(70) + '\n';
+                text += `  Entity Count: ${mc.entityCount}\n`;
+                text += `  Matches: ${mc.matches} | Differences: ${mc.differences}\n`;
 
-                for (const comparison in data._comparisons.details[entity]) {
-                    const details = data._comparisons.details[entity][comparison];
-                    text += `\n  ${comparison}\n`;
-                    text += `    LE1 Count: ${details.le1Count}\n`;
-                    text += `    LE2 Count: ${details.le2Count}\n`;
-                    text += `    Difference: ${details.differences}\n`;
-                    text += `    Match: ${details.match ? 'Yes ✓' : 'No ✗'}\n`;
+                if (mc.missingByLE) {
+                    for (const le in mc.missingByLE) {
+                        if (mc.missingByLE[le].length > 0) {
+                            text += `\n  Missing in ${le}: ${mc.missingByLE[le].join(', ')}\n`;
+                        }
+                    }
                 }
             }
         }

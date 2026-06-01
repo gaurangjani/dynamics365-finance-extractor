@@ -1,13 +1,23 @@
-// Configuration comparison engine
+// Configuration comparison engine with module awareness
 class ConfigComparator {
-    static compare(data) {
+    static compare(data, modules = []) {
         const comparisons = {
-            summary: this._generateSummary(data),
+            summary: this._generateSummary(data, modules),
+            moduleComparisons: {},
             entityComparisons: {},
             detailedDifferences: {}
         };
 
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
+
+        // Compare by module
+        for (const module of modules) {
+            comparisons.moduleComparisons[module] = {
+                module,
+                summaryStats: this._getModuleSummary(data, module, legalEntities),
+                differences: this._compareModule(data, module, legalEntities)
+            };
+        }
 
         // Compare each entity across legal entities
         for (const entity in data[legalEntities[0]] || {}) {
@@ -18,47 +28,119 @@ class ConfigComparator {
         return comparisons;
     }
 
-    static _generateSummary(data) {
+    static _generateSummary(data, modules = []) {
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
         const summary = {
             legalEntitiesCount: legalEntities.length,
             legalEntities: legalEntities,
+            modulesCount: modules.length,
+            modules: modules,
             entitiesCount: 0,
             totalRecords: 0,
             entitiesMissingByLE: {},
-            matchStatus: {}
+            matchStatus: {},
+            moduleReadinessByLE: {}
         };
 
         for (const le of legalEntities) {
             summary.entitiesMissingByLE[le] = [];
-            for (const entity in data[le]) {
-                if (!summary.matchStatus[entity]) {
-                    summary.matchStatus[entity] = [];
+            summary.moduleReadinessByLE[le] = {};
+
+            for (const module of modules) {
+                const moduleEntities = Object.keys(data[le][module] || {});
+                summary.moduleReadinessByLE[le][module] = {
+                    entityCount: moduleEntities.length,
+                    recordCount: 0,
+                    status: moduleEntities.length > 0 ? 'Ready' : 'Not Configured'
+                };
+
+                for (const entity of moduleEntities) {
+                    if (!summary.matchStatus[`${module}_${entity}`]) {
+                        summary.matchStatus[`${module}_${entity}`] = [];
+                    }
+                    summary.matchStatus[`${module}_${entity}`].push(le);
+
+                    if (data[le][module][entity] && data[le][module][entity].records) {
+                        const count = data[le][module][entity].records.length;
+                        summary.moduleReadinessByLE[le][module].recordCount += count;
+                        summary.totalRecords += count;
+                    }
                 }
-                summary.matchStatus[entity].push(le);
             }
         }
 
         // Find missing entities
         const allEntities = new Set();
         for (const le of legalEntities) {
-            Object.keys(data[le]).forEach(e => allEntities.add(e));
+            for (const module of modules) {
+                Object.keys(data[le][module] || {}).forEach(e => allEntities.add(`${module}_${e}`));
+            }
         }
 
         summary.entitiesCount = allEntities.size;
 
+        return summary;
+    }
+
+    static _getModuleSummary(data, module, legalEntities) {
+        const summary = {
+            module,
+            totalEntities: 0,
+            totalRecords: 0,
+            leReadiness: {}
+        };
+
         for (const le of legalEntities) {
-            for (const entity of allEntities) {
-                if (!data[le][entity]) {
-                    summary.entitiesMissingByLE[le].push(entity);
-                }
-                if (data[le][entity] && data[le][entity].records) {
-                    summary.totalRecords += data[le][entity].records.length;
+            const moduleData = data[le][module] || {};
+            const entities = Object.keys(moduleData);
+            summary.totalEntities += entities.length;
+
+            summary.leReadiness[le] = {
+                configured: entities.length > 0,
+                entityCount: entities.length,
+                recordCount: 0,
+                percentage: 0
+            };
+
+            for (const entity of entities) {
+                if (moduleData[entity] && moduleData[entity].records) {
+                    summary.leReadiness[le].recordCount += moduleData[entity].records.length;
+                    summary.totalRecords += moduleData[entity].records.length;
                 }
             }
         }
 
         return summary;
+    }
+
+    static _compareModule(data, module, legalEntities) {
+        const differences = {
+            module,
+            missingByLE: {},
+            mismatchByLE: {}
+        };
+
+        for (const le of legalEntities) {
+            differences.missingByLE[le] = [];
+            differences.mismatchByLE[le] = [];
+        }
+
+        // Get all entities in this module
+        const allModuleEntities = new Set();
+        for (const le of legalEntities) {
+            Object.keys(data[le][module] || {}).forEach(e => allModuleEntities.add(e));
+        }
+
+        // Check for missing and mismatched entities
+        for (const entity of allModuleEntities) {
+            for (const le of legalEntities) {
+                if (!data[le][module] || !data[le][module][entity]) {
+                    differences.missingByLE[le].push(entity);
+                }
+            }
+        }
+
+        return differences;
     }
 
     static _compareEntity(data, entityName, legalEntities) {

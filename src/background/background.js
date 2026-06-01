@@ -46,6 +46,7 @@ async function initializeExtraction(request, sender) {
     extractionSession = {
         tabId: sender.tab.id,
         legalEntities: request.legalEntities,
+        modules: request.modules || [],
         entities: request.entities,
         formats: request.formats,
         includeComparison: request.includeComparison,
@@ -56,6 +57,7 @@ async function initializeExtraction(request, sender) {
         details: [],
         complete: false,
         extractedData: {},
+        moduleProgress: {},
         results: []
     };
 
@@ -72,42 +74,83 @@ async function performExtraction() {
 
     const totalLEs = extractionSession.legalEntities.length;
     const totalEntities = extractionSession.entities.length;
-    const totalSteps = totalLEs * totalEntities;
+    const totalModules = extractionSession.modules.length || 1;
+    const totalSteps = totalLEs * totalEntities * totalModules;
 
     let currentStep = 0;
 
     try {
-        for (const legalEntity of extractionSession.legalEntities) {
-            extractionSession.extractedData[legalEntity] = {};
+        // Initialize module progress tracking
+        for (const module of (extractionSession.modules || [])) {
+            extractionSession.moduleProgress[module] = { entities: 0, total: totalEntities, status: 'pending' };
+        }
 
-            for (const entity of extractionSession.entities) {
-                if (!extractionSession.status === 'active') break;
+        // Process in batches for performance
+        const BATCH_SIZE = 20;
+        const leCount = totalLEs;
 
-                currentStep++;
-                const percentage = Math.round((currentStep / totalSteps) * 100);
+        for (let batch = 0; batch < Math.ceil(leCount / BATCH_SIZE); batch++) {
+            const batchStart = batch * BATCH_SIZE;
+            const batchEnd = Math.min(batchStart + BATCH_SIZE, leCount);
+            const batchLEs = extractionSession.legalEntities.slice(batchStart, batchEnd);
 
-                extractionSession.message = `Extracting ${entity} for ${legalEntity}...`;
-                extractionSession.progress = percentage;
-                extractionSession.details.push(`Extracted ${entity} from ${legalEntity}`);
+            for (const legalEntity of batchLEs) {
+                if (extractionSession.status !== 'extracting') break;
 
-                try {
-                    const entityData = await extractEntity(legalEntity, entity);
-                    extractionSession.extractedData[legalEntity][entity] = entityData;
-                } catch (error) {
-                    console.error(`Error extracting ${entity} for ${legalEntity}:`, error);
-                    extractionSession.details.push(`⚠ Error: ${entity} from ${legalEntity}`);
+                extractionSession.extractedData[legalEntity] = {};
+
+                // Extract by module
+                for (const module of (extractionSession.modules || ['General Ledger'])) {
+                    for (const entity of extractionSession.entities) {
+                        if (extractionSession.status !== 'extracting') break;
+
+                        currentStep++;
+                        const percentage = Math.round((currentStep / totalSteps) * 100);
+
+                        extractionSession.message = `Extracting ${entity} from ${module} (${legalEntity})...`;
+                        extractionSession.progress = percentage;
+
+                        // Update module progress
+                        if (extractionSession.moduleProgress[module]) {
+                            extractionSession.moduleProgress[module].status = 'in-progress';
+                        }
+
+                        try {
+                            const entityData = await extractEntity(legalEntity, entity, module);
+                            if (!extractionSession.extractedData[legalEntity][module]) {
+                                extractionSession.extractedData[legalEntity][module] = {};
+                            }
+                            extractionSession.extractedData[legalEntity][module][entity] = entityData;
+                            extractionSession.details.push(`✓ ${entity} (${module}) from ${legalEntity}`);
+                        } catch (error) {
+                            console.error(`Error extracting ${entity} for ${legalEntity}:`, error);
+                            extractionSession.details.push(`⚠ ${entity} (${module}) from ${legalEntity}`);
+                        }
+
+                        // Update module progress
+                        if (extractionSession.moduleProgress[module]) {
+                            extractionSession.moduleProgress[module].entities++;
+                        }
+                    }
+                }
+
+                // Mark modules as complete for this LE
+                for (const module of (extractionSession.modules || [])) {
+                    if (extractionSession.moduleProgress[module]) {
+                        extractionSession.moduleProgress[module].status = 'complete';
+                    }
                 }
             }
         }
 
         // Perform comparison if requested
         if (extractionSession.includeComparison) {
-            extractionSession.message = 'Generating comparison report...';
+            extractionSession.message = 'Generating module-aware comparison report...';
             extractionSession.progress = 95;
 
-            const comparisons = performComparison(extractionSession.extractedData);
+            const comparisons = performComparison(extractionSession.extractedData, extractionSession.modules);
             extractionSession.extractedData._comparisons = comparisons;
-            extractionSession.details.push('Generated comparison report');
+            extractionSession.details.push('✓ Generated comparison report');
         }
 
         // Export data in requested formats
@@ -117,7 +160,7 @@ async function performExtraction() {
         for (const format of extractionSession.formats) {
             try {
                 await exportData(format, extractionSession.extractedData);
-                extractionSession.details.push(`Exported ${format.toUpperCase()}`);
+                extractionSession.details.push(`✓ Exported ${format.toUpperCase()}`);
             } catch (error) {
                 console.error(`Error exporting ${format}:`, error);
                 extractionSession.details.push(`⚠ Export error: ${format}`);
@@ -126,7 +169,7 @@ async function performExtraction() {
 
         extractionSession.status = 'complete';
         extractionSession.progress = 100;
-        extractionSession.message = 'Extraction completed successfully!';
+        extractionSession.message = `Extraction completed! Extracted ${totalEntities} entities from ${totalModules} modules for ${totalLEs} legal entities.`;
         extractionSession.complete = true;
 
     } catch (error) {
@@ -137,19 +180,20 @@ async function performExtraction() {
     }
 }
 
-async function extractEntity(legalEntity, entityName) {
-    // Simulate OData API call
+async function extractEntity(legalEntity, entityName, module = 'General Ledger') {
+    // Simulate OData API call with module context
     // In production, this would call the actual D365F OData API
 
     return new Promise((resolve) => {
         setTimeout(() => {
             resolve({
                 entityName,
+                module,
                 legalEntity,
                 count: Math.floor(Math.random() * 100) + 10,
                 records: generateMockRecords(entityName)
             });
-        }, 500 + Math.random() * 1000);
+        }, 300 + Math.random() * 700);
     });
 }
 
@@ -171,34 +215,70 @@ function generateMockRecords(entityName) {
     return records;
 }
 
-function performComparison(extractedData) {
+function performComparison(extractedData, modules = []) {
     const comparisons = {
-        summary: {},
+        summary: {
+            modules: modules,
+            totalLEs: 0,
+            totalEntities: 0,
+            comparisonPairs: 0
+        },
+        moduleComparisons: {},
         details: {}
     };
 
     const legalEntities = Object.keys(extractedData).filter(k => k !== '_comparisons');
+    comparisons.summary.totalLEs = legalEntities.length;
 
-    for (const entity of Object.keys(extractedData[legalEntities[0]] || {})) {
-        comparisons.details[entity] = {};
+    if (legalEntities.length === 0) return comparisons;
 
-        for (let i = 0; i < legalEntities.length - 1; i++) {
-            const le1 = legalEntities[i];
-            const le2 = legalEntities[i + 1];
+    // Compare by module
+    for (const module of modules) {
+        comparisons.moduleComparisons[module] = {
+            module,
+            entityCount: 0,
+            matches: 0,
+            differences: 0,
+            missing: []
+        };
 
-            const key = `${le1}_vs_${le2}`;
-            const data1 = extractedData[le1][entity] || {};
-            const data2 = extractedData[le2][entity] || {};
+        // Get entities in this module from first LE
+        const firstLE = legalEntities[0];
+        const moduleData = extractedData[firstLE][module] || {};
+        const moduleEntities = Object.keys(moduleData);
+        comparisons.moduleComparisons[module].entityCount = moduleEntities.length;
+        comparisons.summary.totalEntities += moduleEntities.length;
 
-            comparisons.details[entity][key] = {
-                le1Count: data1.count || 0,
-                le2Count: data2.count || 0,
-                differences: Math.abs((data1.count || 0) - (data2.count || 0)),
-                match: data1.count === data2.count
-            };
+        // Compare entities across LEs
+        for (const entity of moduleEntities) {
+            comparisons.details[`${module}_${entity}`] = {};
+
+            for (let i = 0; i < legalEntities.length - 1; i++) {
+                const le1 = legalEntities[i];
+                const le2 = legalEntities[i + 1];
+
+                const key = `${le1}_vs_${le2}`;
+                const data1 = extractedData[le1][module]?.[entity] || {};
+                const data2 = extractedData[le2][module]?.[entity] || {};
+
+                const isMatch = data1.count === data2.count;
+                if (isMatch) {
+                    comparisons.moduleComparisons[module].matches++;
+                } else {
+                    comparisons.moduleComparisons[module].differences++;
+                }
+
+                comparisons.details[`${module}_${entity}`][key] = {
+                    le1Count: data1.count || 0,
+                    le2Count: data2.count || 0,
+                    differences: Math.abs((data1.count || 0) - (data2.count || 0)),
+                    match: isMatch
+                };
+            }
         }
     }
 
+    comparisons.summary.comparisonPairs = legalEntities.length > 1 ? legalEntities.length - 1 : 0;
     return comparisons;
 }
 
