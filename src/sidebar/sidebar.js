@@ -348,28 +348,121 @@ async function simulateExtraction() {
     const progressPercent = document.getElementById('progressPercent');
     const progressDetails = document.getElementById('progressDetails');
 
-    for (let i = 0; i <= 100; i += 10) {
-        progressFill.style.width = i + '%';
-        progressPercent.textContent = i + '%';
-        progressText.textContent = `Extracting data... (${i}%)`;
+    try {
+        // Extract real data from D365F
+        const extractedRecords = await extractRealConfigurationData();
 
-        progressDetails.innerHTML += `
-            <div class="progress-detail-item">✓ Processing module ${Math.ceil(i / 20)}...</div>
-        `;
+        // Store extracted records for export
+        sidebarState.extractedRecords = extractedRecords;
 
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Update progress
+        let progress = 0;
+        while (progress <= 100) {
+            progressFill.style.width = progress + '%';
+            progressPercent.textContent = progress + '%';
+            progressText.textContent = `Processing ${extractedRecords.length} configuration records...`;
+
+            progress += Math.random() * 20;
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+
+        progressFill.style.width = '100%';
+        progressPercent.textContent = '100%';
+        progressText.textContent = `Extraction Complete! ${extractedRecords.length} records found`;
+
+        sidebarState.isExtracting = false;
+
+        setTimeout(() => {
+            showResults(extractedRecords);
+        }, 500);
+
+    } catch (error) {
+        console.error('Extraction error:', error);
+        progressText.textContent = 'Error: ' + error.message;
+        showAlert('Extraction error: ' + error.message, 'error');
+        sidebarState.isExtracting = false;
     }
-
-    // Complete
-    progressText.textContent = 'Extraction Complete!';
-    sidebarState.isExtracting = false;
-
-    setTimeout(() => {
-        showResults();
-    }, 500);
 }
 
-function showResults() {
+async function extractRealConfigurationData() {
+    const records = [];
+    const moduleODataMap = {
+        'General Ledger': ['MainAccounts', 'Ledgers', 'LedgerParameters'],
+        'Accounts Receivable': ['CustGroup', 'CustPostingProfiles'],
+        'Accounts Payable': ['VendGroup', 'VendPostingProfiles'],
+        'Inventory Management': ['ItemGroupTable', 'InventParameters'],
+        'Project Management': ['ProjCategory', 'ProjParameters'],
+        'Manufacturing': ['ProdParameters', 'BOMParameters'],
+        'Fixed Assets': ['AssetGroup', 'AssetParameters'],
+        'Cash Management': ['BankParameters', 'BankAccountTable'],
+        'Human Resources': ['HRMParameters', 'PayrollParameters'],
+        'Procurement': ['ProcurementCategories', 'PurchParameters'],
+        'Sales': ['SalesParameters', 'TradeAgreement'],
+        'Organization Admin': ['CompanyInfo', 'NumberSequenceTable']
+    };
+
+    for (const le of sidebarState.selectedLE) {
+        for (const module of sidebarState.selectedModules) {
+            const entities = moduleODataMap[module] || [];
+
+            for (const entity of entities) {
+                try {
+                    const data = await callODataAPI(entity, le);
+                    if (data && data.value) {
+                        data.value.slice(0, 5).forEach((item, idx) => {
+                            records.push({
+                                LegalEntity: le,
+                                Module: module,
+                                Entity: entity,
+                                RecordID: item.RecId || item.EntityID || item.Key || `${entity}_${idx}`,
+                                Name: item.Name || item.Description || item.DisplayName || item.Title || entity,
+                                Status: 'Active',
+                                CreatedDate: new Date().toISOString().split('T')[0],
+                                ModifiedDate: new Date().toISOString().split('T')[0],
+                                Details: JSON.stringify(item).substring(0, 100)
+                            });
+                        });
+                    }
+                } catch (error) {
+                    console.log(`Could not fetch ${entity} from ${module}: ${error.message}`);
+                    // Continue with other entities
+                }
+            }
+        }
+    }
+
+    return records;
+}
+
+async function callODataAPI(entityName, legalEntity) {
+    try {
+        const filter = legalEntity ? `?$filter=DataAreaId eq '${legalEntity}'` : '';
+        const url = `/_odata/v1/${entityName}${filter}&$top=5`;
+
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'OData-Version': '4.0'
+            },
+            credentials: 'include' // Include session cookies
+        });
+
+        if (response.ok) {
+            return await response.json();
+        } else if (response.status === 404) {
+            console.log(`Entity ${entityName} not found`);
+            return null;
+        } else {
+            throw new Error(`API error: ${response.status} ${response.statusText}`);
+        }
+    } catch (error) {
+        console.error(`OData API error for ${entityName}:`, error);
+        throw error;
+    }
+}
+
+function showResults(records = []) {
     document.getElementById('progressSection').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'flex';
 
@@ -381,7 +474,7 @@ function showResults() {
             <div class="result-item-name">📊 Configuration Export</div>
             <div class="result-item-details">
                 Format: ${sidebarState.selectedFormat.toUpperCase()}<br>
-                LEs: ${sidebarState.selectedLE.length} | Modules: ${sidebarState.selectedModules.length}<br>
+                Records: ${records.length} | LEs: ${sidebarState.selectedLE.length} | Modules: ${sidebarState.selectedModules.length}<br>
                 Generated: ${timestamp}
             </div>
             <div class="result-item-download">
@@ -390,7 +483,7 @@ function showResults() {
         </div>
     `;
 
-    showAlert('✓ Extraction completed successfully!', 'success');
+    showAlert('✓ Extraction completed! Found ' + records.length + ' configuration records.', 'success');
 }
 
 function downloadFile(event) {
@@ -452,26 +545,8 @@ function downloadFile(event) {
 }
 
 function generateConfigurationData() {
-    // Generate sample configuration records for selected modules and LEs
-    const configRecords = [];
-
-    // For each selected LE and module combination, create sample records
-    sidebarState.selectedLE.forEach(le => {
-        sidebarState.selectedModules.forEach(module => {
-            // Create 3 sample records per LE/module combination
-            for (let i = 1; i <= 3; i++) {
-                configRecords.push({
-                    LegalEntity: le,
-                    Module: module,
-                    RecordID: `${module}_${le}_${i}`,
-                    Name: `${module} Config ${i}`,
-                    Status: i % 2 === 0 ? 'Active' : 'Inactive',
-                    CreatedDate: new Date(Date.now() - Math.random() * 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                    ModifiedDate: new Date().toISOString().split('T')[0]
-                });
-            }
-        });
-    });
+    // Use real extracted records if available, otherwise empty array
+    const configRecords = sidebarState.extractedRecords || [];
 
     return {
         total: configRecords.length,
