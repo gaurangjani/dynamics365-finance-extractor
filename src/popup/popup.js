@@ -4,11 +4,29 @@ let extractionState = {
     isExtracting: false,
     legalEntities: [],
     selectedLE: [],
+    selectedModules: [],
     selectedEntities: [],
     selectedFormats: []
 };
 
+// Module definitions (imported from entities.js pattern)
+const D365F_MODULES = {
+    'General Ledger': { color: '#0078D4', count: 13 },
+    'Accounts Receivable': { color: '#7FBA00', count: 8 },
+    'Accounts Payable': { color: '#FFB900', count: 7 },
+    'Inventory Management': { color: '#00D4FF', count: 10 },
+    'Project Management': { color: '#6C63FF', count: 8 },
+    'Manufacturing': { color: '#E74C3C', count: 9 },
+    'Fixed Assets': { color: '#9B59B6', count: 7 },
+    'Cash Management': { color: '#1ABC9C', count: 7 },
+    'Human Resources': { color: '#F39C12', count: 8 },
+    'Procurement': { color: '#34495E', count: 8 },
+    'Sales': { color: '#C0392B', count: 9 },
+    'Organization Admin': { color: '#8E44AD', count: 7 }
+};
+
 async function initializePopup() {
+    renderModulesList();
     loadLegalEntities();
     attachEventListeners();
     checkExtractionStatus();
@@ -16,6 +34,8 @@ async function initializePopup() {
 
 function attachEventListeners() {
     document.getElementById('extractionForm').addEventListener('submit', startExtraction);
+
+    // Legal Entities
     document.getElementById('selectAllLE').addEventListener('click', (e) => {
         e.preventDefault();
         selectAllLegalEntities();
@@ -24,6 +44,22 @@ function attachEventListeners() {
         e.preventDefault();
         clearAllLegalEntities();
     });
+
+    // Modules
+    document.getElementById('selectAllModules').addEventListener('click', (e) => {
+        e.preventDefault();
+        selectAllModules();
+    });
+    document.getElementById('selectCoreModules').addEventListener('click', (e) => {
+        e.preventDefault();
+        selectCoreModules();
+    });
+    document.getElementById('clearAllModules').addEventListener('click', (e) => {
+        e.preventDefault();
+        clearAllModules();
+    });
+
+    // Entities
     document.getElementById('selectAllEntity').addEventListener('click', (e) => {
         e.preventDefault();
         selectAllEntities();
@@ -32,8 +68,81 @@ function attachEventListeners() {
         e.preventDefault();
         clearAllEntities();
     });
+
     document.getElementById('cancelBtn').addEventListener('click', cancelExtraction);
     document.getElementById('newExtractionBtn').addEventListener('click', resetForm);
+}
+
+function renderModulesList() {
+    const modulesList = document.getElementById('modulesList');
+    modulesList.innerHTML = Object.entries(D365F_MODULES).map(([name, data]) => `
+        <label class="module-item">
+            <input type="checkbox" class="module-checkbox" value="${name}" checked>
+            <div class="module-label">
+                <span class="module-name">${name}</span>
+                <span class="module-count">${data.count} entities</span>
+            </div>
+        </label>
+    `).join('');
+
+    // Add change listeners
+    modulesList.querySelectorAll('.module-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateSelectedModules);
+    });
+
+    updateSelectedModules();
+}
+
+function updateSelectedModules() {
+    const checkboxes = document.querySelectorAll('.module-checkbox:checked');
+    extractionState.selectedModules = Array.from(checkboxes).map(cb => cb.value);
+    updateEntitiesList();
+}
+
+function updateEntitiesList() {
+    // In a full implementation, this would filter entities by selected modules
+    // For now, show all entities from selected modules
+    const entitiesList = document.getElementById('entitiesList');
+
+    if (extractionState.selectedModules.length === 0) {
+        entitiesList.innerHTML = '<div class="loading-text">Select at least one module to see entities</div>';
+        return;
+    }
+
+    // Display sample entities (full implementation would have all 100+ entities)
+    const sampleEntities = [
+        'Ledgers', 'MainAccounts', 'DimensionHierarchies', 'DimensionAttributes',
+        'CustomerGroups', 'VendorGroups', 'ItemGroups', 'ProjectCategories',
+        'AssetGroups', 'EmployeeParameters', 'ProcurementCategories', 'SalesParameters'
+    ];
+
+    entitiesList.innerHTML = sampleEntities.map(entity => `
+        <label class="checkbox-item">
+            <input type="checkbox" name="entity" value="${entity}" checked>
+            <span>${entity}</span>
+        </label>
+    `).join('');
+}
+
+function selectAllModules() {
+    document.querySelectorAll('.module-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+    updateSelectedModules();
+}
+
+function selectCoreModules() {
+    document.querySelectorAll('.module-checkbox').forEach(cb => {
+        cb.checked = ['General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Inventory Management'].includes(cb.value);
+    });
+    updateSelectedModules();
+}
+
+function clearAllModules() {
+    document.querySelectorAll('.module-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateSelectedModules();
 }
 
 async function loadLegalEntities() {

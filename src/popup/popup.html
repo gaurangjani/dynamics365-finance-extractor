@@ -32,46 +32,28 @@
                 </div>
             </div>
 
-            <!-- Entity Types Selection -->
+            <!-- Module Selection -->
+            <div class="form-group">
+                <label class="form-label">D365F Modules</label>
+                <div class="entity-selection">
+                    <button type="button" class="btn-link" id="selectAllModules">All Modules</button>
+                    <button type="button" class="btn-link" id="selectCoreModules">Core Only</button>
+                    <button type="button" class="btn-link" id="clearAllModules">Clear All</button>
+                </div>
+                <div id="modulesList" class="modules-grid">
+                    <!-- Modules will be populated by JavaScript -->
+                </div>
+            </div>
+
+            <!-- Entity Types Selection (Dynamic) -->
             <div class="form-group">
                 <label class="form-label">Configuration Entities</label>
                 <div class="entity-selection">
                     <button type="button" class="btn-link" id="selectAllEntity">Select All</button>
                     <button type="button" class="btn-link" id="clearAllEntity">Clear All</button>
                 </div>
-                <div class="checkbox-group">
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="Ledgers" checked>
-                        <span>Ledgers</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="MainAccounts" checked>
-                        <span>Main Accounts</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="DimensionHierarchies" checked>
-                        <span>Dimension Hierarchies</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="DimensionAttributes" checked>
-                        <span>Dimension Attributes</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="LedgerParameters">
-                        <span>Ledger Parameters</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="CustPostingProfiles">
-                        <span>Customer Posting Profiles</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="VendPostingProfiles">
-                        <span>Vendor Posting Profiles</span>
-                    </label>
-                    <label class="checkbox-item">
-                        <input type="checkbox" name="entity" value="InventPostingProfiles">
-                        <span>Inventory Posting Profiles</span>
-                    </label>
+                <div id="entitiesList" class="checkbox-group">
+                    <!-- Entities will be populated based on selected modules -->
                 </div>
             </div>
 
