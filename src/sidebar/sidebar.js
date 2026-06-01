@@ -26,13 +26,34 @@ const D365F_MODULES = {
     'Organization Admin': { color: '#8E44AD', count: 9 }
 };
 
-// Initialize sidebar
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Sidebar initialized');
-    renderModules();
-    loadLegalEntities();
-    attachEventListeners();
-});
+// Initialize sidebar immediately (DOMContentLoaded may have already fired)
+function initializeSidebar() {
+    console.log('Initializing sidebar...');
+
+    // Check if sidebar container exists
+    if (!document.getElementById('d365-sidebar-container')) {
+        console.log('Sidebar not found, retrying...');
+        setTimeout(initializeSidebar, 100);
+        return;
+    }
+
+    try {
+        renderModules();
+        loadLegalEntities();
+        attachEventListeners();
+        console.log('Sidebar initialized successfully');
+    } catch (error) {
+        console.error('Sidebar initialization error:', error);
+    }
+}
+
+// Try immediate initialization
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeSidebar);
+} else {
+    // DOM is already ready, initialize now
+    setTimeout(initializeSidebar, 50);
+}
 
 function attachEventListeners() {
     // Form submission
@@ -86,16 +107,38 @@ function attachEventListeners() {
 
 function renderModules() {
     const modulesList = document.getElementById('modulesList');
-    modulesList.innerHTML = Object.entries(D365F_MODULES).map(([name, data]) => `
-        <label class="module-item">
-            <input type="checkbox" class="module-checkbox" value="${name}" checked>
-            <span class="module-name">${name}</span>
-            <span class="module-count">${data.count} entities</span>
-        </label>
-    `).join('');
 
-    document.querySelectorAll('.module-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateSelectedModules);
+    if (!modulesList) {
+        console.error('Modules list element not found');
+        return;
+    }
+
+    modulesList.innerHTML = '';
+
+    Object.entries(D365F_MODULES).forEach(([name, data]) => {
+        const label = document.createElement('label');
+        label.className = 'module-item';
+
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'module-checkbox';
+        input.value = name;
+        input.checked = true;
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'module-name';
+        nameSpan.textContent = name;
+
+        const countSpan = document.createElement('span');
+        countSpan.className = 'module-count';
+        countSpan.textContent = `${data.count} entities`;
+
+        label.appendChild(input);
+        label.appendChild(nameSpan);
+        label.appendChild(countSpan);
+        modulesList.appendChild(label);
+
+        input.addEventListener('change', updateSelectedModules);
     });
 
     updateSelectedModules();
@@ -107,7 +150,7 @@ function updateSelectedModules() {
 }
 
 function loadLegalEntities() {
-    // Mock legal entities
+    // Mock legal entities - always use these for now
     const mockLEs = [
         { value: 'USPM', label: 'US Primary (USPM)' },
         { value: 'USMF', label: 'US Manufacturing (USMF)' },
@@ -120,25 +163,51 @@ function loadLegalEntities() {
 
     sidebarState.legalEntities = mockLEs;
     renderLegalEntities(mockLEs);
+
+    // Update counter
+    setTimeout(() => {
+        updateLECounter();
+    }, 50);
 }
 
 function renderLegalEntities(legalEntities) {
     const leList = document.getElementById('legalEntitiesList');
+
+    if (!leList) {
+        console.error('Legal entities list element not found');
+        return;
+    }
 
     if (!legalEntities || legalEntities.length === 0) {
         leList.innerHTML = '<div class="loading-text">No legal entities</div>';
         return;
     }
 
-    leList.innerHTML = legalEntities.map(le => `
-        <label class="checkbox-item" style="margin: 0; padding: 6px;">
-            <input type="checkbox" class="le-checkbox" value="${le.value}" checked>
-            <span>${le.label}</span>
-        </label>
-    `).join('');
+    // Clear and populate list
+    leList.innerHTML = '';
+    legalEntities.forEach(le => {
+        const label = document.createElement('label');
+        label.className = 'checkbox-item';
+        label.style.margin = '0';
+        label.style.padding = '6px';
 
-    document.querySelectorAll('.le-checkbox').forEach(cb => {
-        cb.addEventListener('change', updateSelectedLE);
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.className = 'le-checkbox';
+        input.value = le.value;
+        input.checked = true;
+
+        const span = document.createElement('span');
+        span.textContent = le.label;
+
+        label.appendChild(input);
+        label.appendChild(span);
+        leList.appendChild(label);
+
+        input.addEventListener('change', () => {
+            updateSelectedLE();
+            updateLECounter();
+        });
     });
 
     updateSelectedLE();
