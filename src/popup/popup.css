@@ -368,13 +368,20 @@ form {
 }
 
 #legalEntitiesList {
-    max-height: 240px;
+    max-height: 200px;
     overflow-y: auto;
     border: 1px solid var(--border-glass);
     border-radius: 10px;
     padding: 12px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
     backdrop-filter: blur(8px);
+    scroll-behavior: smooth;
+}
+
+#entitiesList {
+    max-height: 200px;
+    overflow-y: auto;
+    scroll-behavior: smooth;
 }
 
 #legalEntitiesList::-webkit-scrollbar {
@@ -391,6 +398,23 @@ form {
 }
 
 #legalEntitiesList::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 212, 255, 0.5);
+}
+
+#entitiesList::-webkit-scrollbar {
+    width: 6px;
+}
+
+#entitiesList::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+#entitiesList::-webkit-scrollbar-thumb {
+    background: rgba(0, 212, 255, 0.3);
+    border-radius: 3px;
+}
+
+#entitiesList::-webkit-scrollbar-thumb:hover {
     background: rgba(0, 212, 255, 0.5);
 }
 
