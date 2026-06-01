@@ -16,6 +16,7 @@
     "*://*.onmicrosoft.com/*"
   ],
   "action": {
+    "default_popup": "src/popup/toggle.html",
     "default_title": "D365 Finance Config Extractor",
     "default_icons": {
       "16": "icons/icon-16.png",
