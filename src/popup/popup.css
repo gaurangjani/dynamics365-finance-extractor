@@ -368,14 +368,49 @@ form {
 }
 
 #legalEntitiesList {
-    max-height: 200px;
+    max-height: 180px;
     overflow-y: auto;
     border: 1px solid var(--border-glass);
     border-radius: 10px;
-    padding: 12px;
+    padding: 10px;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
     backdrop-filter: blur(8px);
     scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.le-list {
+    max-height: 180px;
+    overflow-y: auto;
+    border: 1px solid var(--border-glass);
+    border-radius: 10px;
+    padding: 10px;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+    backdrop-filter: blur(8px);
+    scroll-behavior: smooth;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.le-selection {
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+}
+
+.le-selection .checkbox-item {
+    flex: 1;
+    margin: 0;
+}
+
+.le-counter {
+    margin-top: 8px;
+    text-align: right;
+    color: var(--text-secondary);
+    font-size: 12px;
 }
 
 #entitiesList {

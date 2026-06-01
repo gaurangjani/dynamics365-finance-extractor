@@ -37,14 +37,13 @@ async function initializePopup() {
 function attachEventListeners() {
     document.getElementById('extractionForm').addEventListener('submit', startExtraction);
 
-    // Legal Entities
-    document.getElementById('selectAllLE').addEventListener('click', (e) => {
-        e.preventDefault();
-        selectAllLegalEntities();
-    });
-    document.getElementById('clearAllLE').addEventListener('click', (e) => {
-        e.preventDefault();
-        clearAllLegalEntities();
+    // Legal Entities - Select All checkbox
+    document.getElementById('selectAllLE').addEventListener('change', (e) => {
+        if (e.target.checked) {
+            selectAllLegalEntities();
+        } else {
+            clearAllLegalEntities();
+        }
     });
 
     // Modules
@@ -230,24 +229,49 @@ function renderLegalEntities(legalEntities) {
     }
 
     leList.innerHTML = legalEntities.map(le => `
-        <label class="checkbox-item">
+        <label class="checkbox-item" style="margin: 0;">
             <input type="checkbox" class="le-checkbox" value="${le.value}" data-label="${le.label}" checked>
             <span>${le.label}</span>
         </label>
     `).join('');
 
-    // Add change listener to checkboxes (do this after rendering)
+    // Add change listener to checkboxes
     setTimeout(() => {
         leList.querySelectorAll('.le-checkbox').forEach(checkbox => {
-            checkbox.removeEventListener('change', updateSelectedLE);
-            checkbox.addEventListener('change', updateSelectedLE);
+            checkbox.removeEventListener('change', handleLECheckboxChange);
+            checkbox.addEventListener('change', handleLECheckboxChange);
         });
+        // Update counter
+        updateLECounter();
     }, 0);
 }
 
+function handleLECheckboxChange() {
+    updateSelectedLE();
+    updateLECounter();
+}
+
+function updateLECounter() {
+    const selectedCount = document.querySelectorAll('.le-checkbox:checked').length;
+    const totalCount = document.querySelectorAll('.le-checkbox').length;
+    const counterText = document.getElementById('leCounterText');
+
+    if (counterText) {
+        counterText.textContent = `${selectedCount}/${totalCount} selected`;
+    }
+
+    // Update "Select All" checkbox state
+    const selectAllCheckbox = document.getElementById('selectAllLE');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = selectedCount === totalCount && totalCount > 0;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < totalCount;
+    }
+}
+
 function updateSelectedLE() {
-    const checkboxes = document.querySelectorAll('#legalEntitiesList .le-checkbox:checked');
+    const checkboxes = document.querySelectorAll('.le-checkbox:checked');
     extractionState.selectedLE = Array.from(checkboxes).map(cb => cb.value);
+    updateLECounter();
 }
 
 function selectAllLegalEntities() {

@@ -24,11 +24,16 @@
             <div class="form-group">
                 <label class="form-label">Legal Entities</label>
                 <div class="le-selection">
-                    <button type="button" class="btn-link" id="selectAllLE">Select All</button>
-                    <button type="button" class="btn-link" id="clearAllLE">Clear All</button>
+                    <label class="checkbox-item">
+                        <input type="checkbox" id="selectAllLE" class="le-select-all">
+                        <span>Select All</span>
+                    </label>
                 </div>
-                <div id="legalEntitiesList" class="checkbox-group">
+                <div id="legalEntitiesList" class="le-list">
                     <div class="loading-text">Loading legal entities...</div>
+                </div>
+                <div class="le-counter">
+                    <small id="leCounterText">0 selected</small>
                 </div>
             </div>
 
