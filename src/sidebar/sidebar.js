@@ -1,3 +1,6 @@
+// Wrap in try-catch to prevent page errors
+try {
+
 // Sidebar state and initialization
 let sidebarState = {
     isExtracting: false,
@@ -298,3 +301,7 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
+
+} catch (sidebarError) {
+    console.error('Sidebar initialization error:', sidebarError);
+}
