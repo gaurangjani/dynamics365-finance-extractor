@@ -115,8 +115,8 @@ const D365F_ENTITIES = {
         odataCollection: 'TaxCodes',
         description: 'Sales tax code setup'
     },
-    'TaxGroups': {
-        name: 'TaxGroups',
+    'TaxItemGroups': {
+        name: 'TaxItemGroups',
         displayName: 'Tax Item Groups',
         module: 'General Ledger',
         odataCollection: 'TaxItemGroupHeadingTable',
