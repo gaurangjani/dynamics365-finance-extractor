@@ -15,11 +15,7 @@
     "*://*.crm*.dynamics.com/*",
     "*://*.onmicrosoft.com/*"
   ],
-  "background": {
-    "service_worker": "src/background/background.js"
-  },
   "action": {
-    "default_popup": "src/popup/popup.html",
     "default_title": "D365 Finance Config Extractor",
     "default_icons": {
       "16": "icons/icon-16.png",
@@ -27,6 +23,12 @@
       "128": "icons/icon-128.png"
     }
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["src/sidebar/sidebar.html", "src/sidebar/sidebar.css", "src/sidebar/sidebar.js"],
+      "matches": ["*://*.dynamics.com/*", "*://*.crm.dynamics.com/*", "*://*.onmicrosoft.com/*"]
+    }
+  ],
   "icons": {
     "16": "icons/icon-16.png",
     "48": "icons/icon-48.png",
