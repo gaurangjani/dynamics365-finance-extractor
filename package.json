@@ -1,0 +1,24 @@
+{
+  "name": "d365-finance-config-extractor",
+  "version": "1.0.0",
+  "description": "Extract and compare Dynamics 365 Finance configuration across multiple legal entities",
+  "main": "src/background/background.js",
+  "scripts": {
+    "dev": "echo 'Load extension in chrome://extensions with Developer Mode enabled'",
+    "build": "npm run build:icons",
+    "build:icons": "node scripts/generate-icons.js"
+  },
+  "keywords": [
+    "dynamics-365",
+    "finance",
+    "configuration",
+    "extraction",
+    "comparison",
+    "legal-entities"
+  ],
+  "author": "Your Organization",
+  "license": "Proprietary",
+  "devDependencies": {
+    "jimp": "^0.16.0"
+  }
+}
