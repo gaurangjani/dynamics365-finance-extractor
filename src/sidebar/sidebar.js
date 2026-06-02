@@ -1045,24 +1045,16 @@ async function callODataAPI(entityName, legalEntity) {
     try {
         const baseUrl = window.location.origin;
 
-        // Try multiple URL patterns for the same entity (D365F /data/ path is correct)
+        // Try multiple URL patterns for the same entity (D365F /data/ path is correct).
+        // cross-company=true is REQUIRED to get data from all legal entities — without it
+        // D365F OData silently returns data for the current company only.
         const urlPatterns = [
-            // Pattern 1: D365F standard /data/ endpoint with LE filter
-            () => {
-                let url = `${baseUrl}/data/${entityName}?$top=100`;
-                if (legalEntity) url += `&$filter=DataAreaId eq '${legalEntity}'`;
-                return url;
-            },
-            // Pattern 2: No filter (global config data)
-            () => `${baseUrl}/data/${entityName}?$top=100`,
-            // Pattern 3: lowercase dataAreaId filter variant
-            () => {
-                let url = `${baseUrl}/data/${entityName}?$top=100`;
-                if (legalEntity) url += `&$filter=dataAreaId eq '${legalEntity}'`;
-                return url;
-            },
-            // Pattern 4: Legacy /_odata/v1/ path fallback
-            () => `${baseUrl}/_odata/v1/${entityName}?$top=100`,
+            // Pattern 1: cross-company=true — primary pattern for all-LE data
+            () => `${baseUrl}/data/${entityName}?cross-company=true&$top=5000`,
+            // Pattern 2: no cross-company (fallback for global/non-scoped entities)
+            () => `${baseUrl}/data/${entityName}?$top=5000`,
+            // Pattern 3: Legacy /_odata/v1/ path fallback
+            () => `${baseUrl}/_odata/v1/${entityName}?cross-company=true&$top=5000`,
         ];
 
         for (const urlPattern of urlPatterns) {
