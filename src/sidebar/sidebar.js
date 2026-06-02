@@ -1212,6 +1212,95 @@ function downloadFile(event) {
     }
 }
 
+// Detect the best key field for a multi-record entity (e.g. JournalNameId, Code, Name).
+function detectKeyField(sampleRawFields) {
+    const skipFields = new Set(['RecId', 'DataAreaId', 'dataAreaId', 'Partition', 'TableId']);
+    const keyPatterns = [/Id$/i, /Code$/i, /Name$/i, /Num$/i, /Number$/i, /Key$/i, /Type$/i];
+    const keys = Object.keys(sampleRawFields).filter(k => !k.startsWith('@') && !skipFields.has(k));
+    for (const pattern of keyPatterns) {
+        const match = keys.find(k => pattern.test(k));
+        if (match) return match;
+    }
+    return keys[0] || 'RecId';
+}
+
+// Build comparison sheet for parameter-style entities (≤1 record per LE).
+// Layout: Field | LE1 | LE2 | ... | Consistent?
+function buildParameterSheet(byLE, leList) {
+    const skipFields = new Set(['RecId', 'Partition', 'TableId', 'DataAreaId', 'dataAreaId']);
+    const allFields = new Set();
+    leList.forEach(le => {
+        const record = byLE[le]?.[0];
+        if (record) Object.keys(record).filter(k => !k.startsWith('@') && !skipFields.has(k)).forEach(k => allFields.add(k));
+    });
+
+    const headers = ['Field', ...leList, 'Consistent?'];
+    const rows = [];
+    for (const field of allFields) {
+        const values = leList.map(le => {
+            const record = byLE[le]?.[0];
+            if (!record) return '—';
+            const val = record[field];
+            if (val === null || val === undefined) return '—';
+            if (typeof val === 'object') return JSON.stringify(val);
+            return String(val);
+        });
+        const present = values.filter(v => v !== '—');
+        const consistent = present.length === 0 ? '—' : new Set(present).size === 1 ? '✓ Same' : '⚠ Differs';
+        rows.push([field, ...values, consistent]);
+    }
+    return [headers, ...rows];
+}
+
+// Build comparison sheet for multi-record entities (e.g. journal names, posting profiles).
+// Layout: KeyField | LE1 | LE2 | ... | In All LEs?
+function buildRecordSheet(byLE, leList, allEntityRecords) {
+    const sampleRaw = allEntityRecords.find(r => r._rawFields)?._rawFields || {};
+    const keyField = detectKeyField(sampleRaw);
+
+    // Collect all unique key values across all LEs
+    const allKeys = new Set();
+    leList.forEach(le => {
+        (byLE[le] || []).forEach(rec => {
+            const v = rec[keyField];
+            if (v !== null && v !== undefined) allKeys.add(String(v));
+        });
+    });
+
+    // Build lookup: le -> keyVal -> record
+    const lookup = {};
+    leList.forEach(le => {
+        lookup[le] = {};
+        (byLE[le] || []).forEach(rec => { lookup[le][String(rec[keyField] ?? '')] = rec; });
+    });
+
+    // Collect extra display fields (up to 3 descriptive fields beside the key)
+    const skipFields = new Set(['RecId', 'Partition', 'TableId', 'DataAreaId', 'dataAreaId', keyField]);
+    const extraFields = Object.keys(sampleRaw)
+        .filter(k => !k.startsWith('@') && !skipFields.has(k))
+        .slice(0, 3);
+
+    const headers = [keyField, ...extraFields, ...leList, 'In All LEs?'];
+    const rows = [];
+    for (const keyVal of allKeys) {
+        // Get extra field values from first LE that has this record
+        const anyRecord = leList.map(le => lookup[le][keyVal]).find(Boolean) || {};
+        const extraValues = extraFields.map(f => {
+            const v = anyRecord[f];
+            return v === null || v === undefined ? '' : String(v);
+        });
+
+        const presence = leList.map(le => lookup[le][keyVal] ? '✓' : '—');
+        const presentCount = presence.filter(p => p === '✓').length;
+        const coverage = presentCount === leList.length ? '✓ All LEs'
+            : presentCount === 0 ? '— None'
+            : `⚠ ${presentCount}/${leList.length} LEs`;
+
+        rows.push([keyVal, ...extraValues, ...presence, coverage]);
+    }
+    return [headers, ...rows];
+}
+
 async function downloadExcelFile(data) {
     try {
         if (typeof XLSX === 'undefined') {
@@ -1221,117 +1310,98 @@ async function downloadExcelFile(data) {
         const records = sidebarState.extractedRecords || [];
         const wb = XLSX.utils.book_new();
 
-        // Sheet 1: Summary
-        const moduleCount = {};
-        const entityCount = {};
+        // Determine LE list: selected LEs (or all found in data if none selected)
+        const selectedLEs = sidebarState.selectedLE && sidebarState.selectedLE.length > 0
+            ? sidebarState.selectedLE
+            : [...new Set(records.map(r => r.LegalEntity).filter(Boolean))].sort();
+
+        // ── Summary sheet ────────────────────────────────────────────────────────
+        const entityCoverage = {};
         records.forEach(r => {
-            moduleCount[r.Module] = (moduleCount[r.Module] || 0) + 1;
-            entityCount[r.Entity] = (entityCount[r.Entity] || 0) + 1;
+            if (!entityCoverage[r.Entity]) entityCoverage[r.Entity] = new Set();
+            if (r.LegalEntity) entityCoverage[r.Entity].add(r.LegalEntity);
         });
 
         const summaryData = [
-            ['D365 FINANCE CONFIGURATION EXPORT'],
+            ['D365 FINANCE CONFIGURATION COMPARISON'],
             [],
             ['Export Date', data.exportDate],
-            ['Total Records', records.length],
-            ['Legal Entities Selected', data.legalEntities.join(', ')],
-            ['Modules Selected', data.modules.join(', ')],
+            ['Legal Entities Compared', selectedLEs.join(', ')],
+            ['Modules', data.modules.join(', ')],
+            ['Total Entities Extracted', Object.keys(entityCoverage).length],
             [],
-            ['MODULE', 'RECORD COUNT'],
-            ...Object.entries(moduleCount).map(([m, c]) => [m, c]),
-            [],
-            ['ENTITY', 'RECORD COUNT'],
-            ...Object.entries(entityCount).map(([e, c]) => [e, c])
+            ['ENTITY', 'MODULE', 'RECORDS', 'LEs WITH DATA', 'COVERAGE'],
+            ...records.reduce((acc, r) => {
+                if (!acc.seen) acc.seen = new Set();
+                if (!acc.seen.has(r.Entity)) {
+                    acc.seen.add(r.Entity);
+                    const leCount = entityCoverage[r.Entity]?.size || 0;
+                    const coverage = selectedLEs.length > 0
+                        ? `${leCount}/${selectedLEs.length}`
+                        : `${leCount}`;
+                    acc.rows.push([r.Entity, r.Module, records.filter(x => x.Entity === r.Entity).length, leCount, coverage]);
+                }
+                return acc;
+            }, { seen: new Set(), rows: [] }).rows
         ];
+
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-        wsSummary['!cols'] = [{ wch: 35 }, { wch: 20 }];
+        wsSummary['!cols'] = [{ wch: 40 }, { wch: 25 }, { wch: 12 }, { wch: 15 }, { wch: 12 }];
         XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-        // Group records by Entity
+        // ── One sheet per entity ─────────────────────────────────────────────────
         const byEntity = {};
         records.forEach(r => {
             if (!byEntity[r.Entity]) byEntity[r.Entity] = [];
             byEntity[r.Entity].push(r);
         });
 
-        // One sheet per entity — with ALL raw OData fields as columns
         const usedSheetNames = new Set(['Summary']);
 
         for (const [entityName, entityRecords] of Object.entries(byEntity)) {
-            // Collect all unique field keys from raw OData data
-            const rawKeys = new Set();
+            // Group raw OData records by LE
+            const byLE = {};
             entityRecords.forEach(r => {
-                if (r._rawFields && typeof r._rawFields === 'object') {
-                    Object.keys(r._rawFields).forEach(k => {
-                        // Skip OData metadata fields
-                        if (!k.startsWith('@odata') && !k.startsWith('@Microsoft')) {
-                            rawKeys.add(k);
-                        }
-                    });
-                }
+                const le = r.LegalEntity || 'Global';
+                if (!byLE[le]) byLE[le] = [];
+                if (r._rawFields) byLE[le].push(r._rawFields);
             });
 
-            // Build headers: LegalEntity first, then all OData fields, or fallback fixed columns
-            let headers;
-            let rows;
+            // Use selectedLEs that actually appear in this entity's data, preserving order
+            const leList = selectedLEs.filter(le => byLE[le] && byLE[le].length > 0);
+            if (leList.length === 0) continue; // skip if no matching LE data
 
-            if (rawKeys.size > 0) {
-                // Real OData data — show all fields
-                const fieldList = ['LegalEntity', ...Array.from(rawKeys)];
-                headers = fieldList;
-                rows = entityRecords.map(r => {
-                    const raw = r._rawFields || {};
-                    return fieldList.map(k => {
-                        if (k === 'LegalEntity') return r.LegalEntity || '';
-                        const val = raw[k];
-                        if (val === null || val === undefined) return '';
-                        if (typeof val === 'object') return JSON.stringify(val);
-                        return val;
-                    });
-                });
-            } else {
-                // Mock/fallback data — use standard columns
-                headers = ['Legal Entity', 'Module', 'Record ID', 'Name', 'Status', 'Created Date', 'Modified Date', 'Details'];
-                rows = entityRecords.map(r => [
-                    r.LegalEntity || '',
-                    r.Module || '',
-                    r.RecordID || '',
-                    r.Name || '',
-                    r.Status || '',
-                    r.CreatedDate || '',
-                    r.ModifiedDate || '',
-                    r.Details || ''
-                ]);
-            }
+            // Choose layout: parameter (pivot fields as rows) vs record (pivot records as rows)
+            const maxPerLE = Math.max(...leList.map(le => byLE[le].length));
+            const sheetData = maxPerLE <= 1
+                ? buildParameterSheet(byLE, leList)
+                : buildRecordSheet(byLE, leList, entityRecords);
 
-            // Excel sheet name max 31 chars, must be unique
+            // Unique sheet name, max 31 chars
             let sheetName = entityName.substring(0, 31);
             let suffix = 2;
             while (usedSheetNames.has(sheetName)) {
-                const base = entityName.substring(0, 28);
-                sheetName = `${base}_${suffix++}`;
+                sheetName = `${entityName.substring(0, 28)}_${suffix++}`;
             }
             usedSheetNames.add(sheetName);
 
-            const sheetData = [headers, ...rows];
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-
-            // Auto-size columns (max 40 chars wide)
-            ws['!cols'] = headers.map(() => ({ wch: 25 }));
-
+            const colCount = sheetData[0]?.length || 1;
+            ws['!cols'] = Array.from({ length: colCount }, (_, i) => ({
+                wch: i === 0 ? 40 : i === colCount - 1 ? 15 : 18
+            }));
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
         }
 
-        // If no entity sheets were created, add a fallback sheet
         if (Object.keys(byEntity).length === 0) {
             const ws = XLSX.utils.aoa_to_sheet([
-                ['Legal Entity', 'Module', 'Entity', 'Record ID', 'Name', 'Status', 'Details'],
-                ['No records extracted - ensure OData is accessible and legal entities are selected']
+                ['No records extracted'],
+                ['Ensure OData is accessible and legal entities are selected']
             ]);
             XLSX.utils.book_append_sheet(wb, ws, 'No Data');
         }
 
-        // Download via Blob (works in Chrome extensions)
+        // ── Download via Blob ────────────────────────────────────────────────────
         const wbBinary = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbBinary], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
@@ -1344,8 +1414,8 @@ async function downloadExcelFile(data) {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        const sheetCount = Object.keys(byEntity).length + 1; // +1 for Summary
-        showAlert(`✓ Excel downloaded! ${sheetCount} sheets (1 per entity + Summary)`, 'success');
+        const sheetCount = usedSheetNames.size;
+        showAlert(`✓ Excel downloaded! ${sheetCount} sheets with cross-LE comparison`, 'success');
     } catch (error) {
         console.error('Excel download error:', error);
         showAlert('Error downloading Excel file: ' + error.message, 'error');
