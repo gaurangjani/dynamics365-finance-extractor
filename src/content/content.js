@@ -94,13 +94,22 @@ function injectSidebar() {
         css.href = chrome.runtime.getURL('src/sidebar/sidebar.css');
         document.head.appendChild(css);
 
-        // Inject JS with error handling
-        setTimeout(() => {
+        // Inject xlsx library first, then sidebar JS
+        const xlsx = document.createElement('script');
+        xlsx.src = chrome.runtime.getURL('src/lib/xlsx.full.min.js');
+        xlsx.onload = () => {
             const js = document.createElement('script');
             js.onerror = () => console.error('Failed to load sidebar.js');
             js.src = chrome.runtime.getURL('src/sidebar/sidebar.js');
             document.body.appendChild(js);
-        }, 100);
+        };
+        xlsx.onerror = () => {
+            console.error('Failed to load xlsx library, loading sidebar without Excel support');
+            const js = document.createElement('script');
+            js.src = chrome.runtime.getURL('src/sidebar/sidebar.js');
+            document.body.appendChild(js);
+        };
+        document.body.appendChild(xlsx);
 
     } catch (error) {
         console.error('Sidebar injection error:', error);

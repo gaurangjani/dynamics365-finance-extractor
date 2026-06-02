@@ -26,7 +26,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["src/sidebar/sidebar.html", "src/sidebar/sidebar.css", "src/sidebar/sidebar.js"],
+      "resources": ["src/sidebar/sidebar.html", "src/sidebar/sidebar.css", "src/sidebar/sidebar.js", "src/lib/xlsx.full.min.js"],
       "matches": ["*://*.dynamics.com/*", "*://*.crm.dynamics.com/*", "*://*.onmicrosoft.com/*"]
     }
   ],
