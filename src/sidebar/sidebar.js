@@ -785,7 +785,7 @@ async function extractRealConfigurationData() {
 
         for (const entity of entities) {
             try {
-                const data = await callODataAPI(entity, null);
+                const data = await callODataAPI(entity);
 
                 if (data && data.value && Array.isArray(data.value) && data.value.length > 0) {
                     oDataSuccessCount++;
@@ -1041,57 +1041,79 @@ function generateMockConfigData() {
     return mockRecords;
 }
 
-async function callODataAPI(entityName, legalEntity) {
+// Fetch a single page from D365F OData and return the parsed JSON, or null on failure.
+async function fetchODataPage(url) {
+    const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'OData-Version': '4.0',
+            'OData-MaxVersion': '4.0'
+        },
+        credentials: 'include'
+    });
+    if (!response.ok) {
+        console.log(`⚠ ${url} returned ${response.status}`);
+        return null;
+    }
+    return response.json();
+}
+
+// Fetch ALL pages for a given starting URL by following @odata.nextLink.
+// D365F pages at 1000 records by default; we request 1000 per page for efficiency.
+async function fetchAllPages(startUrl) {
+    const allRecords = [];
+    let nextUrl = startUrl;
+    let pageNum = 1;
+
+    while (nextUrl) {
+        console.log(`  Page ${pageNum}: ${nextUrl}`);
+        const data = await fetchODataPage(nextUrl);
+
+        if (!data || !data.value) return null; // request failed
+
+        allRecords.push(...data.value);
+        console.log(`  → Page ${pageNum}: ${data.value.length} records (total so far: ${allRecords.length})`);
+
+        // Follow nextLink if present; D365F includes cross-company in the link automatically
+        nextUrl = data['@odata.nextLink'] || null;
+        pageNum++;
+
+        // Small delay between pages to avoid overloading the server
+        if (nextUrl) await new Promise(resolve => setTimeout(resolve, 80));
+    }
+
+    return allRecords;
+}
+
+async function callODataAPI(entityName) {
     try {
         const baseUrl = window.location.origin;
 
-        // Try multiple URL patterns for the same entity (D365F /data/ path is correct).
         // cross-company=true is REQUIRED to get data from all legal entities — without it
         // D365F OData silently returns data for the current company only.
+        // $top=1000 is the D365F server-side maximum per page; nextLink handles the rest.
         const urlPatterns = [
-            // Pattern 1: cross-company=true — primary pattern for all-LE data
-            () => `${baseUrl}/data/${entityName}?cross-company=true&$top=5000`,
-            // Pattern 2: no cross-company (fallback for global/non-scoped entities)
-            () => `${baseUrl}/data/${entityName}?$top=5000`,
-            // Pattern 3: Legacy /_odata/v1/ path fallback
-            () => `${baseUrl}/_odata/v1/${entityName}?cross-company=true&$top=5000`,
+            `${baseUrl}/data/${entityName}?cross-company=true&$top=1000`,
+            `${baseUrl}/data/${entityName}?$top=1000`,
+            `${baseUrl}/_odata/v1/${entityName}?cross-company=true&$top=1000`,
         ];
 
-        for (const urlPattern of urlPatterns) {
+        for (const url of urlPatterns) {
             try {
-                const url = urlPattern();
-                console.log(`  Trying: ${url}`);
-                
-                const response = await fetch(url, {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                        'OData-Version': '4.0',
-                        'OData-MaxVersion': '4.0'
-                    },
-                    credentials: 'include'
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data && data.value && data.value.length > 0) {
-                        console.log(`✓ Got ${data.value.length} records from ${url}`);
-                        return data;
-                    }
-                } else if (response.status === 404) {
-                    console.log(`⚠ ${url} not found (404)`);
-                    continue;
-                } else {
-                    console.log(`⚠ ${url} returned ${response.status}`);
-                    continue;
+                const records = await fetchAllPages(url);
+                if (records && records.length > 0) {
+                    console.log(`✓ ${entityName}: ${records.length} total records (all pages)`);
+                    return { value: records };
                 }
+                if (records === null) continue; // HTTP error — try next pattern
+                // records.length === 0 — entity exists but is empty; still a valid response
+                console.log(`⚠ ${entityName}: entity found but empty at ${url}`);
             } catch (innerError) {
-                console.log(`⚠ Failed with pattern: ${innerError.message}`);
-                continue;
+                console.log(`⚠ Failed with pattern ${url}: ${innerError.message}`);
             }
         }
 
-        // All attempts failed or returned empty
         console.log(`No data found for ${entityName}`);
         return { value: [] };
     } catch (error) {
