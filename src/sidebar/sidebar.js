@@ -579,6 +579,20 @@ async function extractRealConfigurationData() {
     // Config/setup/master data entities ONLY — no transactional data.
     // Each entity is fetched ONCE without LE filter; D365F OData returns DataAreaId
     // per row automatically, so all legal entities appear combined in one response.
+    // ── Entities deliberately excluded for performance ──────────────────────────
+    // ExchangeRates             — daily rates, easily 50,000+ rows
+    // DimensionAttributeValues  — all dimension member values, can be enormous
+    // FinancialDimensionValueEntities — same concept, alias entity
+    // LedgerJournalNameAuditTrails — audit log, not config
+    // Customers / Vendors       — master data, not config
+    // CustomerCreditLimits      — per-customer record, not setup
+    // WarehouseLocations        — operational master, can be large
+    // ProjectCostSalesPrices    — pricing master data
+    // HumanResourcePositions    — position master data
+    // Duplicates removed: CashDiscounts/PaymentTerms/PaymentDays/PaymentDayLines kept
+    //   only in AR; TaxLedgerAccountGroups kept only in GL; LedgerConsolidateAccountGroups
+    //   & MainAccountConsolidateAccounts kept only in GL; CurrencyRevaluationAccounts kept
+    //   only in Bank; TradeAgreementJournalNames kept only in AR.
     const moduleODataMap = {
         // ─── GENERAL LEDGER ──────────────────────────────────────────────────────
         'General Ledger': [
@@ -593,14 +607,13 @@ async function extractRealConfigurationData() {
             'LedgerAllocationRuleDestinations', 'LedgerAllocationRuleSources',
             'LedgerPeriodAllocationCategories', 'LedgerPeriodAllocationCategoryLines',
             // Journal names (setup only, not transactions)
-            'LedgerJournalNames', 'LedgerJournalNameAuditTrails',
-            // Financial dimensions
-            'DimensionAttributes', 'DimensionAttributeValues',
-            'DimensionAttributeLegalEntityOverrides', 'DimensionHierarchies',
-            'DimensionHierarchyNodes', 'DimensionHierarchyLevel', 'DimensionSets', 'DimensionSetLines',
-            'FinancialDimensionValueEntities', 'FinancialDimensionDefaultTemplates',
-            // Currencies & exchange rates
-            'Currencies', 'ExchangeRateTypes', 'ExchangeRates', 'CurrencyTranslations',
+            'LedgerJournalNames',
+            // Financial dimensions (structure only — values excluded for performance)
+            'DimensionAttributes', 'DimensionAttributeLegalEntityOverrides',
+            'DimensionHierarchies', 'DimensionHierarchyNodes', 'DimensionHierarchyLevel',
+            'DimensionSets', 'DimensionSetLines', 'FinancialDimensionDefaultTemplates',
+            // Currencies & exchange rate types (rates themselves excluded — too large)
+            'Currencies', 'ExchangeRateTypes', 'CurrencyTranslations',
             // Fiscal calendars & periods
             'FiscalCalendars', 'FiscalCalendarYears', 'FiscalCalendarPeriods',
             'AccountingPeriods', 'PeriodTypes',
@@ -622,8 +635,8 @@ async function extractRealConfigurationData() {
 
         // ─── ACCOUNTS RECEIVABLE ─────────────────────────────────────────────────
         'Accounts Receivable': [
-            // Customer master & groups (setup)
-            'Customers', 'CustomerGroups', 'CustomerPostingProfiles', 'CustomerParameters',
+            // Customer groups & setup (Customers master excluded — too large)
+            'CustomerGroups', 'CustomerPostingProfiles', 'CustomerParameters',
             // Payment setup
             'CustomerPaymentMethods', 'CustomerPaymentMethodSpecifications',
             'CustomerPaymentSchedules', 'CustomerPaymentScheduleLines',
@@ -632,14 +645,12 @@ async function extractRealConfigurationData() {
             'CustomerCollectionLetterCodes',
             // Interest setup
             'CustomerInterestCodes',
-            // Credit setup
-            'CustomerCreditLimits', 'CustomerWriteOffCodes', 'CustomerWriteOffReasonCodeGroups',
+            // Write-off setup (CustomerCreditLimits excluded — per-customer data)
+            'CustomerWriteOffCodes', 'CustomerWriteOffReasonCodeGroups',
             // Charges setup
             'CustomerCharges',
-            // Sales agreement setup (templates)
-            'SalesAgreementClassifications',
-            // Trade agreement setup
-            'TradeAgreementJournalNames',
+            // Agreement & trade setup
+            'SalesAgreementClassifications', 'TradeAgreementJournalNames',
             // Statistics & reporting setup
             'CustomerStatisticsGroups', 'CustomerStatisticsPeriods',
             // Journal names setup
@@ -648,13 +659,12 @@ async function extractRealConfigurationData() {
 
         // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
         'Accounts Payable': [
-            // Vendor master & groups (setup)
-            'Vendors', 'VendorGroups', 'VendorPostingProfiles', 'VendorParameters',
+            // Vendor groups & setup (Vendors master excluded — too large)
+            'VendorGroups', 'VendorPostingProfiles', 'VendorParameters',
             'VendorCertificateTypes', 'VendorCategories', 'VendorDefaultOffsetAccounts',
-            // Payment setup
+            // Payment setup (CashDiscounts/PaymentTerms/PaymentDays already in AR — not duplicated)
             'VendorPaymentMethods', 'VendorPaymentMethodSpecifications',
             'VendorPaymentSchedules', 'VendorPaymentScheduleLines',
-            'CashDiscounts', 'PaymentTerms', 'PaymentDays', 'PaymentDayLines',
             // Invoice matching setup
             'VendorInvoiceMatchingPolicies', 'VendorInvoiceMatchingPolicyDetails',
             // Charges setup
@@ -716,14 +726,12 @@ async function extractRealConfigurationData() {
 
         // ─── CONSOLIDATION ───────────────────────────────────────────────────────
         'Consolidation': [
-            // Consolidation account mapping setup
-            'LedgerConsolidateAccountGroups', 'MainAccountConsolidateAccounts', 'ConsolidationAccountGroups',
-            // Consolidation setup
-            'LedgerConsolidateParameters',
+            // Consolidation setup (account mapping already in GL — not duplicated here)
+            'ConsolidationAccountGroups', 'LedgerConsolidateParameters',
             // Elimination rules setup
             'LedgerEliminationRules', 'LedgerEliminationRuleLines',
-            // Currency translation setup
-            'CurrencyRevaluationAccounts', 'ConsolidationCurrencyTranslationAccounts',
+            // Currency translation setup (CurrencyRevaluationAccounts already in Bank)
+            'ConsolidationCurrencyTranslationAccounts',
             // Financial reporting (Management Reporter) setup
             'FinancialReportingParameters', 'FinancialReportDefinitions',
             'FinancialReportRows', 'FinancialReportColumns', 'FinancialReportTrees'
@@ -731,13 +739,15 @@ async function extractRealConfigurationData() {
 
         // ─── REMAINING MODULES ────────────────────────────────────────────────────
         'Inventory Management': [
+            // WarehouseLocations excluded — operational master, can be very large
             'ItemGroups', 'InventoryParameters', 'InventoryModelGroups',
             'InventoryDimensionGroups', 'InventoryStorageDimensionGroups',
-            'InventoryTrackingDimensionGroups', 'WarehouseLocations', 'Warehouses',
+            'InventoryTrackingDimensionGroups', 'Warehouses',
             'InventoryPostingSetup', 'ItemSetupSupplyTypes'
         ],
         'Project Management': [
-            'ProjectCategories', 'ProjectParameters', 'ProjectCostSalesPrices',
+            // ProjectCostSalesPrices excluded — pricing master, can be large
+            'ProjectCategories', 'ProjectParameters',
             'ProjectHourUtilizationSetup', 'ProjectPostingProfiles', 'ProjectResourceSetup'
         ],
         'Manufacturing': [
@@ -745,12 +755,14 @@ async function extractRealConfigurationData() {
             'ProductionPoolGroups', 'ProductionFlushingPrinciples'
         ],
         'Human Resources': [
-            'HumanResourceParameters', 'HumanResourcePositions', 'HumanResourceJobs',
+            // HumanResourcePositions excluded — position master data, can be large
+            'HumanResourceParameters', 'HumanResourceJobs',
             'HumanResourceJobFunctions', 'HumanResourceDepartments',
             'PayrollParameters', 'BenefitTypes', 'BenefitPlans'
         ],
         'Sales': [
-            'SalesParameters', 'TradeAgreementJournalNames', 'SalesPools',
+            // TradeAgreementJournalNames already in AR — not duplicated here
+            'SalesParameters', 'SalesPools',
             'SalesStatisticsGroups', 'CommissionSalesGroups', 'CommissionCustomerGroups'
         ],
         'Organization Admin': [
@@ -762,8 +774,9 @@ async function extractRealConfigurationData() {
             'NumberSequenceGroupReferences'
         ],
         'Tax': [
+            // TaxLedgerAccountGroups already in GL — not duplicated here
             'TaxParameters', 'SalesTaxCodes', 'SalesTaxGroups', 'ItemSalesTaxGroups',
-            'TaxLedgerAccountGroups', 'TaxExemptCodes', 'TaxAuthorities',
+            'TaxExemptCodes', 'TaxAuthorities',
             'TaxSettlementPeriods', 'TaxRegistrationTypes', 'WithholdingTaxCodes',
             'WithholdingTaxGroups', 'TaxReportingCodes', 'TaxFreeAccounts'
         ],
