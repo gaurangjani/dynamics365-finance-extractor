@@ -345,14 +345,35 @@ async function exportData(format, data) {
 
 function convertToCSV(data) {
     const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
-    let csv = 'LegalEntity,Entity,Record,Field,Value\n';
+    let csv = 'LegalEntity,Module,Entity,RecordID,Field,Value\n';
 
     for (const le of legalEntities) {
-        for (const entity in data[le]) {
-            if (data[le][entity] && data[le][entity].records) {
-                for (const record of data[le][entity].records) {
+        // Check if data is organized by modules
+        for (const moduleOrEntity in data[le]) {
+            const moduleData = data[le][moduleOrEntity];
+            
+            // If the structure has nested entities (module structure)
+            if (moduleData && typeof moduleData === 'object' && !Array.isArray(moduleData) && moduleData.records === undefined) {
+                // This is a module
+                const module = moduleOrEntity;
+                for (const entity in moduleData) {
+                    const entityData = moduleData[entity];
+                    if (entityData && entityData.records && Array.isArray(entityData.records)) {
+                        for (const record of entityData.records) {
+                            for (const field in record) {
+                                const value = String(record[field]).replace(/"/g, '""');
+                                csv += `"${le}","${module}","${entity}","${record.id || ''}","${field}","${value}"\n`;
+                            }
+                        }
+                    }
+                }
+            } else if (moduleData && moduleData.records && Array.isArray(moduleData.records)) {
+                // This is direct entity structure (legacy format)
+                const entity = moduleOrEntity;
+                for (const record of moduleData.records) {
                     for (const field in record) {
-                        csv += `"${le}","${entity}","${record.id}","${field}","${record[field]}"\n`;
+                        const value = String(record[field]).replace(/"/g, '""');
+                        csv += `"${le}","General Ledger","${entity}","${record.id || ''}","${field}","${value}"\n`;
                     }
                 }
             }

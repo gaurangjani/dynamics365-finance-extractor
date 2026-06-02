@@ -263,15 +263,31 @@ class ExportManager {
         const legalEntities = Object.keys(data).filter(k => k !== '_comparisons');
 
         for (const le of legalEntities) {
-            for (const module in data[le]) {
-                for (const entity in data[le][module]) {
-                    const moduleData = data[le][module][entity];
-                    if (moduleData && moduleData.records) {
-                        for (const record of moduleData.records) {
-                            for (const field in record) {
-                                const value = this._escapeCSV(record[field]);
-                                csv += `"${le}","${module}","${entity}","${record.id || ''}","${field}","${value}"\n`;
+            for (const moduleOrEntity in data[le]) {
+                const moduleData = data[le][moduleOrEntity];
+                
+                // Check if this is a module structure or direct entity structure
+                if (moduleData && typeof moduleData === 'object' && !Array.isArray(moduleData) && moduleData.records === undefined) {
+                    // This is a module
+                    const module = moduleOrEntity;
+                    for (const entity in moduleData) {
+                        const entityData = moduleData[entity];
+                        if (entityData && entityData.records) {
+                            for (const record of entityData.records) {
+                                for (const field in record) {
+                                    const value = this._escapeCSV(record[field]);
+                                    csv += `"${le}","${module}","${entity}","${record.id || ''}","${field}","${value}"\n`;
+                                }
                             }
+                        }
+                    }
+                } else if (moduleData && moduleData.records) {
+                    // Direct entity structure (legacy)
+                    const entity = moduleOrEntity;
+                    for (const record of moduleData.records) {
+                        for (const field in record) {
+                            const value = this._escapeCSV(record[field]);
+                            csv += `"${le}","General Ledger","${entity}","${record.id || ''}","${field}","${value}"\n`;
                         }
                     }
                 }
