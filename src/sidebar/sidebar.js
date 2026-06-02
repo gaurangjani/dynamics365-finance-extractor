@@ -589,6 +589,7 @@ async function extractRealConfigurationData() {
     // WarehouseLocations        — operational master, can be large
     // ProjectCostSalesPrices    — pricing master data
     // HumanResourcePositions    — position master data
+    // All transactional entities (journals, invoices, POs, SOs, timesheets, etc.)
     // Duplicates removed: CashDiscounts/PaymentTerms/PaymentDays/PaymentDayLines kept
     //   only in AR; TaxLedgerAccountGroups kept only in GL; LedgerConsolidateAccountGroups
     //   & MainAccountConsolidateAccounts kept only in GL; CurrencyRevaluationAccounts kept
@@ -636,7 +637,7 @@ async function extractRealConfigurationData() {
         // ─── ACCOUNTS RECEIVABLE ─────────────────────────────────────────────────
         'Accounts Receivable': [
             // Customer groups & setup (Customers master excluded — too large)
-            'CustomerGroups', 'CustomerPostingProfiles', 'CustomerParameters',
+            'CustomerGroups', 'CustomerPostingProfiles', 'CustomerPostingProfileLines', 'CustomerParameters',
             // Payment setup
             'CustomerPaymentMethods', 'CustomerPaymentMethodSpecifications',
             'CustomerPaymentSchedules', 'CustomerPaymentScheduleLines',
@@ -660,7 +661,7 @@ async function extractRealConfigurationData() {
         // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
         'Accounts Payable': [
             // Vendor groups & setup (Vendors master excluded — too large)
-            'VendorGroups', 'VendorPostingProfiles', 'VendorParameters',
+            'VendorGroups', 'VendorPostingProfiles', 'VendorPostingProfileLines', 'VendorParameters',
             'VendorCertificateTypes', 'VendorCategories', 'VendorDefaultOffsetAccounts',
             // Payment setup (CashDiscounts/PaymentTerms/PaymentDays already in AR — not duplicated)
             'VendorPaymentMethods', 'VendorPaymentMethodSpecifications',
@@ -740,10 +741,13 @@ async function extractRealConfigurationData() {
         // ─── REMAINING MODULES ────────────────────────────────────────────────────
         'Inventory Management': [
             // WarehouseLocations excluded — operational master, can be very large
-            'ItemGroups', 'InventoryParameters', 'InventoryModelGroups',
+            'ItemGroups', 'InventoryParameters', 'InventoryModelGroups', 'InventoryModelGroupPolicies',
             'InventoryDimensionGroups', 'InventoryStorageDimensionGroups',
             'InventoryTrackingDimensionGroups', 'Warehouses',
-            'InventoryPostingSetup', 'ItemSetupSupplyTypes'
+            'InventoryPostingSetup', 'InventPostingProfiles', 'ItemSetupSupplyTypes',
+            // Quality setup
+            'InventTestGroups', 'InventTestGroupMembers', 'InventQualityGroups',
+            'InventItemQualityGroups', 'InventTestInstruments', 'InventTestVariables'
         ],
         'Project Management': [
             // ProjectCostSalesPrices excluded — pricing master, can be large
@@ -758,7 +762,10 @@ async function extractRealConfigurationData() {
             // HumanResourcePositions excluded — position master data, can be large
             'HumanResourceParameters', 'HumanResourceJobs',
             'HumanResourceJobFunctions', 'HumanResourceDepartments',
-            'PayrollParameters', 'BenefitTypes', 'BenefitPlans'
+            'PayrollParameters', 'BenefitTypes', 'BenefitPlans',
+            // Compensation structure setup
+            'CompensationPlans', 'CompensationLevels', 'CompensationGrids',
+            'CompensationPayFrequency', 'CompensationStructure'
         ],
         'Sales': [
             // TradeAgreementJournalNames already in AR — not duplicated here
@@ -779,6 +786,17 @@ async function extractRealConfigurationData() {
             'TaxExemptCodes', 'TaxAuthorities',
             'TaxSettlementPeriods', 'TaxRegistrationTypes', 'WithholdingTaxCodes',
             'WithholdingTaxGroups', 'TaxReportingCodes', 'TaxFreeAccounts'
+        ],
+        'Cost Accounting': [
+            // Cost accounting ledger & parameters
+            'CostAccountingLedger', 'CostAccountingParameters',
+            // Cost elements (maps to GL main accounts)
+            'CostElements', 'CostElementDimensions',
+            // Cost centers & allocation
+            'CostCenters', 'CostAllocationBases', 'CostAllocationRules',
+            'CostAllocationPolicies', 'CostDistributionPolicies',
+            // Cost rate setup
+            'CostAccountingOverheadRates', 'CostAccountingCostGroups'
         ],
         'Budget': [
             'BudgetParameters', 'BudgetModels', 'BudgetCycleTimeSpans',
