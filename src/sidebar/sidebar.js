@@ -593,7 +593,7 @@ async function extractRealConfigurationData() {
             'LedgerAllocationRuleDestinations', 'LedgerAllocationRuleSources',
             'LedgerPeriodAllocationCategories', 'LedgerPeriodAllocationCategoryLines',
             // Journal names (setup only, not transactions)
-            'LedgerJournalNames',
+            'LedgerJournalNames', 'LedgerJournalNameAuditTrails',
             // Financial dimensions
             'DimensionAttributes', 'DimensionAttributeValues',
             'DimensionAttributeLegalEntityOverrides', 'DimensionHierarchies',
@@ -641,7 +641,9 @@ async function extractRealConfigurationData() {
             // Trade agreement setup
             'TradeAgreementJournalNames',
             // Statistics & reporting setup
-            'CustomerStatisticsGroups', 'CustomerStatisticsPeriods'
+            'CustomerStatisticsGroups', 'CustomerStatisticsPeriods',
+            // Journal names setup
+            'CustomerJournalNames'
         ],
 
         // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
@@ -657,6 +659,8 @@ async function extractRealConfigurationData() {
             'VendorInvoiceMatchingPolicies', 'VendorInvoiceMatchingPolicyDetails',
             // Charges setup
             'VendorCharges',
+            // Journal names setup
+            'VendorJournalNames',
             // Positive pay format setup
             'VendorPositivePayFormats',
             // Procurement policies setup
@@ -752,7 +756,10 @@ async function extractRealConfigurationData() {
         'Organization Admin': [
             'CompanyInfo', 'NumberSequenceGroups', 'OperatingUnits',
             'OrganizationHierarchyTypes', 'OrganizationHierarchyPurposes',
-            'Departments', 'Divisions', 'Teams'
+            'Departments', 'Divisions', 'Teams',
+            // Number sequence formats and assignments
+            'NumberSequenceCodes', 'NumberSequenceReferences',
+            'NumberSequenceGroupReferences'
         ],
         'Tax': [
             'TaxParameters', 'SalesTaxCodes', 'SalesTaxGroups', 'ItemSalesTaxGroups',
