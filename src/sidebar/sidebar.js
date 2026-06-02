@@ -1369,13 +1369,46 @@ async function downloadExcelFile(data) {
 
             // Use selectedLEs that actually appear in this entity's data, preserving order
             const leList = selectedLEs.filter(le => byLE[le] && byLE[le].length > 0);
-            if (leList.length === 0) continue; // skip if no matching LE data
+            if (leList.length === 0) continue;
 
-            // Choose layout: parameter (pivot fields as rows) vs record (pivot records as rows)
+            // ── Section 1: ALL RAW DATA (every record, every OData field as column) ──
+            const rawKeys = new Set();
+            entityRecords.forEach(r => {
+                if (r._rawFields) {
+                    Object.keys(r._rawFields).forEach(k => {
+                        if (!k.startsWith('@')) rawKeys.add(k);
+                    });
+                }
+            });
+            const rawFieldList = Array.from(rawKeys);
+            const rawHeaders = ['LegalEntity', ...rawFieldList];
+            const rawRows = entityRecords.map(r => {
+                const raw = r._rawFields || {};
+                return rawHeaders.map(k => {
+                    if (k === 'LegalEntity') return r.LegalEntity || '';
+                    const val = raw[k];
+                    if (val === null || val === undefined) return '';
+                    if (typeof val === 'object') return JSON.stringify(val);
+                    return val;
+                });
+            });
+
+            // ── Section 2: COMPARISON (cross-LE side-by-side) ──
             const maxPerLE = Math.max(...leList.map(le => byLE[le].length));
-            const sheetData = maxPerLE <= 1
+            const comparisonRows = maxPerLE <= 1
                 ? buildParameterSheet(byLE, leList)
                 : buildRecordSheet(byLE, leList, entityRecords);
+
+            // Combine: raw data, blank gap, comparison heading, comparison table
+            const colCount = Math.max(rawHeaders.length, comparisonRows[0]?.length || 0);
+            const sheetData = [
+                [`=== ALL SOURCE DATA — ${entityName} ===`],
+                rawHeaders,
+                ...rawRows,
+                [],
+                [`=== CROSS-LEGAL ENTITY COMPARISON — ${entityName} ===`],
+                ...comparisonRows
+            ];
 
             // Unique sheet name, max 31 chars
             let sheetName = entityName.substring(0, 31);
@@ -1386,10 +1419,7 @@ async function downloadExcelFile(data) {
             usedSheetNames.add(sheetName);
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
-            const colCount = sheetData[0]?.length || 1;
-            ws['!cols'] = Array.from({ length: colCount }, (_, i) => ({
-                wch: i === 0 ? 40 : i === colCount - 1 ? 15 : 18
-            }));
+            ws['!cols'] = Array.from({ length: colCount }, (_, i) => ({ wch: i === 0 ? 35 : 20 }));
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
         }
 
