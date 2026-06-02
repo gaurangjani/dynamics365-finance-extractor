@@ -1367,9 +1367,17 @@ async function downloadExcelFile(data) {
                 if (r._rawFields) byLE[le].push(r._rawFields);
             });
 
-            // Use selectedLEs that actually appear in this entity's data, preserving order
-            const leList = selectedLEs.filter(le => byLE[le] && byLE[le].length > 0);
-            if (leList.length === 0) continue;
+            // Build LE list for comparison: prefer selectedLEs order, but fall back to
+            // all LEs actually present in the data (handles Global, unmatched IDs, etc.)
+            const leList = selectedLEs.length > 0
+                ? [
+                    ...selectedLEs.filter(le => byLE[le] && byLE[le].length > 0),
+                    ...Object.keys(byLE).filter(le => !selectedLEs.includes(le))
+                  ]
+                : Object.keys(byLE);
+
+            // Always include entity if it has any data — never skip
+            if (entityRecords.length === 0) continue;
 
             // ── Section 1: ALL RAW DATA (every record, every OData field as column) ──
             const rawKeys = new Set();
