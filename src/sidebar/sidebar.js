@@ -53,18 +53,21 @@ console.log('Use window.D365ConfigDebug for debugging');
 
 // Module definitions
 const D365F_MODULES = {
-    'General Ledger': { color: '#0078D4', count: 11 },
-    'Accounts Receivable': { color: '#7FBA00', count: 6 },
-    'Accounts Payable': { color: '#FFB900', count: 5 },
+    'General Ledger': { color: '#0078D4', count: 50 },
+    'Accounts Receivable': { color: '#7FBA00', count: 45 },
+    'Accounts Payable': { color: '#FFB900', count: 45 },
+    'Cash & Bank Management': { color: '#1ABC9C', count: 35 },
+    'Fixed Assets': { color: '#9B59B6', count: 35 },
+    'Consolidation': { color: '#2C3E50', count: 20 },
     'Inventory Management': { color: '#00D4FF', count: 10 },
     'Project Management': { color: '#6C63FF', count: 8 },
     'Manufacturing': { color: '#E74C3C', count: 9 },
-    'Fixed Assets': { color: '#9B59B6', count: 7 },
-    'Cash Management': { color: '#1ABC9C', count: 7 },
     'Human Resources': { color: '#F39C12', count: 8 },
     'Procurement': { color: '#34495E', count: 10 },
     'Sales': { color: '#C0392B', count: 11 },
-    'Organization Admin': { color: '#8E44AD', count: 9 }
+    'Organization Admin': { color: '#8E44AD', count: 9 },
+    'Tax': { color: '#E67E22', count: 15 },
+    'Budget': { color: '#27AE60', count: 10 }
 };
 
 // Initialize sidebar immediately (DOMContentLoaded may have already fired)
@@ -138,7 +141,7 @@ function attachEventListeners() {
     document.getElementById('selectCoreModules').addEventListener('click', (e) => {
         e.preventDefault();
         document.querySelectorAll('.module-checkbox').forEach(cb => {
-            cb.checked = ['General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Inventory Management'].includes(cb.value);
+            cb.checked = ['General Ledger', 'Accounts Receivable', 'Accounts Payable', 'Cash & Bank Management', 'Fixed Assets'].includes(cb.value);
         });
         updateSelectedModules();
     });
@@ -574,24 +577,221 @@ async function simulateExtraction() {
 async function extractRealConfigurationData() {
     const records = [];
     const moduleODataMap = {
+        // ─── GENERAL LEDGER ──────────────────────────────────────────────────────
         'General Ledger': [
-            'MainAccounts', 'Ledgers', 'LedgerParameters', 'LedgerChartOfAccounts',
-            'LedgerJournalTable', 'LedgerJournalTrans', 'LedgerPosting', 'LedgerDimensionAttribute',
-            'DimensionAttribute', 'DimensionAttributeValue', 'DimensionHierarchy', 'GeneralLedgerParameters',
-            'LedgerAccrualTable', 'ExchRateType', 'CurrencyTable'
+            // Chart of Accounts & Main Accounts
+            'MainAccounts', 'MainAccountCategories', 'LedgerChartOfAccounts',
+            'LedgerChartOfAccountsTranslations', 'MainAccountLegalEntityOverrides',
+            'MainAccountConsolidateAccounts', 'LedgerConsolidateAccountGroups',
+            // Ledger setup
+            'Ledgers', 'LedgerParameters', 'GeneralLedgerParameters', 'LedgerPostingTypes',
+            'LedgerAllocations', 'LedgerAllocationRules', 'LedgerAllocationBases',
+            'LedgerAllocationBasisRules', 'LedgerAllocationRuleDestinations', 'LedgerAllocationRuleSources',
+            'LedgerPeriodAllocationCategories', 'LedgerPeriodAllocationCategoryLines',
+            // Journal setup
+            'LedgerJournalNames', 'LedgerJournalTable', 'LedgerJournalTrans',
+            'LedgerJournalHeaders', 'LedgerJournalLines',
+            'GeneralJournalEntries', 'GeneralJournalAccountEntries',
+            'LedgerAccrualTable', 'LedgerAccrualTrans',
+            // Financial dimensions
+            'DimensionAttributes', 'DimensionAttribute', 'DimensionAttributeValues', 'DimensionAttributeValue',
+            'DimensionAttributeLegalEntityOverrides', 'DimensionHierarchies', 'DimensionHierarchy',
+            'DimensionHierarchyNodes', 'DimensionHierarchyLevel', 'DimensionSets', 'DimensionSetLines',
+            'FinancialDimensionValueEntities', 'FinancialDimensionDefaultTemplates',
+            // Currencies & exchange rates
+            'Currencies', 'CurrencyTable', 'ExchangeRateTypes', 'ExchRateType',
+            'ExchangeRates', 'CurrencyTranslations',
+            // Fiscal calendars & periods
+            'FiscalCalendars', 'FiscalCalendarYears', 'FiscalCalendarPeriods',
+            'AccountingPeriods', 'PeriodTypes',
+            // Intercompany & settlement
+            'LedgerIntercompanyAccounts', 'LedgerIntercompanyPosting',
+            'LedgerSettleAccountPairs', 'LedgerAccountAlias', 'LedgerAccountAliasLines',
+            // Account structures & advanced rules
+            'LedgerAccountStructures', 'LedgerAccountStructureRules',
+            'LedgerAdvancedRuleStructures', 'LedgerAdvancedRuleStructureRules',
+            // Closing & year-end
+            'LedgerClosingRoundDifferenceAccounts', 'LedgerYearEndParameters',
+            // Reason codes
+            'ReasonCodes', 'ReasonCodeDescriptions',
+            // Posting profiles & shared
+            'LedgerPosting', 'LedgerDimensionAttribute',
+            'TaxLedgerAccountGroups', 'CashFlowForecastLedgerAccounts'
         ],
+
+        // ─── ACCOUNTS RECEIVABLE ─────────────────────────────────────────────────
         'Accounts Receivable': [
-            'CustGroup', 'CustPostingProfiles', 'CustTable', 'CustInvoiceTable', 'CustParameters',
-            'CustPaymMode', 'CustPaymSchedTable', 'CustTradingPartnerTable', 'CustCreditLimit',
-            'CustInterestTable', 'CustCollectionLetterTable', 'CustCollectionLetterLine',
-            'CustDueReportDetail', 'CustInvoiceJour', 'CustInvoiceLine', 'CustSalesOrderTable'
+            // Customer master & groups
+            'Customers', 'CustTable', 'CustomerGroups', 'CustGroup',
+            'CustomerPostingProfiles', 'CustPostingProfiles', 'CustomerParameters', 'CustParameters',
+            'CustomerTradingPartners', 'CustTradingPartnerTable',
+            'CustomerContactPersons', 'CustomerBankAccounts',
+            // Payment setup
+            'CustomerPaymentMethods', 'CustPaymMode', 'CustomerPaymentMethodSpecifications',
+            'CustomerPaymentSchedules', 'CustPaymSchedTable',
+            'CustomerPaymentScheduleLines', 'CustPaymSchedLine',
+            'CashDiscounts', 'PaymentTerms', 'PaymentDays', 'PaymentDayLines',
+            // Invoicing
+            'CustomerInvoiceHeaders', 'CustInvoiceJour',
+            'CustomerInvoiceLines', 'CustInvoiceLine',
+            'CustomerInvoiceJournalHeaders', 'CustomerInvoiceJournalLines',
+            'FreeTextInvoiceHeaders', 'FreeTextInvoiceLines',
+            'FreeTextInvoiceHeaderCharges', 'FreeTextInvoiceLineCharges',
+            // Sales orders
+            'SalesOrderHeaders', 'CustSalesOrderTable', 'SalesOrderLines',
+            'SalesOrderCharges', 'SalesOrderHeaderCharges',
+            // Collections & interest
+            'CustomerCollectionLetterCodes', 'CustCollectionLetterTable',
+            'CustomerCollectionLetterHeaders', 'CustomerCollectionLetterLines', 'CustCollectionLetterLine',
+            'CustomerInterestCodes', 'CustInterestTable',
+            'CustomerInterestNoteHeaders', 'CustomerInterestNoteLines',
+            // Credit management
+            'CustomerCreditLimits', 'CustCreditLimit', 'CustCreditLimitLine',
+            'CustomerWriteOffCodes', 'CustomerWriteOffReasonCodeGroups',
+            // Agreements & charges
+            'SalesAgreementHeaders', 'SalesAgreementLines',
+            'CustomerCharges', 'CustDueReportDetail',
+            // Return orders
+            'ReturnOrderHeaders', 'ReturnOrderLines',
+            // Statements & aging
+            'CustomerAccountStatements', 'CustomerAgingReportLines',
+            // Posting payment journals
+            'CustomerPaymentJournalHeaders', 'CustomerPaymentJournalLines'
         ],
+
+        // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
         'Accounts Payable': [
-            'VendGroup', 'VendPostingProfiles', 'VendTable', 'VendInvoiceTable', 'VendParameters',
-            'VendPaymMode', 'VendPaymSchedTable', 'VendTradingPartnerTable', 'VendDueReportDetail',
-            'VendInvoiceJour', 'VendInvoiceLine', 'VendPurchOrderTable', 'VendInvoiceMatchingPolicyDetail',
-            'VendRFQTable', 'VendRFQLine'
+            // Vendor master & groups
+            'Vendors', 'VendTable', 'VendorGroups', 'VendGroup',
+            'VendorPostingProfiles', 'VendPostingProfiles', 'VendorParameters', 'VendParameters',
+            'VendorTradingPartners', 'VendTradingPartnerTable',
+            'VendorContactPersons', 'VendorBankAccounts',
+            'VendorCertificateTypes', 'VendorCategories', 'VendorDefaultOffsetAccounts',
+            // Payment setup
+            'VendorPaymentMethods', 'VendPaymMode', 'VendorPaymentMethodSpecifications',
+            'VendorPaymentSchedules', 'VendPaymSchedTable',
+            'VendorPaymentScheduleLines', 'VendPaymSchedLine',
+            'CashDiscounts', 'PaymentTerms', 'PaymentDays', 'PaymentDayLines',
+            // Invoicing
+            'VendorInvoiceHeaders', 'VendInvoiceJour',
+            'VendorInvoiceLines', 'VendInvoiceLine',
+            'VendorInvoiceJournalHeaders', 'VendorInvoiceJournalLines',
+            // Invoice matching
+            'VendorInvoiceMatchingPolicies', 'VendorInvoiceMatchingPolicyDetails', 'VendInvoiceMatchingPolicyDetail',
+            // Purchase orders
+            'PurchaseOrders', 'PurchTable', 'PurchaseOrderLines', 'PurchLine',
+            'PurchaseOrderCharges', 'PurchaseOrderHeaderCharges',
+            // Purchase agreements
+            'PurchaseAgreementHeaders', 'PurchAgreementHeader',
+            'PurchaseAgreementLines', 'PurchAgreementLine',
+            // RFQs
+            'VendorRFQCaseHeaders', 'VendRFQTable',
+            'VendorRFQCaseLines', 'VendRFQLine',
+            // Requisitions
+            'PurchaseRequisitionHeaders', 'PurchReqTable',
+            'PurchaseRequisitionLines', 'PurchReqLine',
+            // Charges & policies
+            'VendorCharges', 'VendDueReportDetail',
+            'PurchasePolicies', 'PurchaseSetup',
+            // Positive pay & statements
+            'VendorPositivePayFormats', 'VendorAccountStatements', 'VendorAgingReportLines',
+            // Payment journals
+            'VendorPaymentJournalHeaders', 'VendorPaymentJournalLines',
+            // On-hold & settlement
+            'VendorOnHoldTransactions', 'VendorSettlementTransactions'
         ],
+
+        // ─── CASH & BANK MANAGEMENT ──────────────────────────────────────────────
+        'Cash & Bank Management': [
+            // Bank account master
+            'BankAccounts', 'BankAccountTable', 'BankAccountTypes',
+            'BankAccountTransactionTypes', 'BankAccountTransactionType',
+            'BankAccountSetup', 'BankParameters',
+            // Statement formats & import
+            'BankStatementFormats', 'BankStatementFormat', 'BankStatementDocumentFormats',
+            'BankAccountFormats', 'AdvancedBankReconciliationImportFormats',
+            // Cheques
+            'BankChequeLayouts', 'BankCheques', 'BankCheque',
+            'BankChequePaymentControls', 'BankNegativePaymentEntries', 'BankNegResponse',
+            'BankNegativePaymentFormats',
+            // Reconciliation
+            'BankAccountReconciliations', 'BankAccountReconciliation',
+            'BankAccountStatements', 'BankAccountStatementLines',
+            'BankReconciliationMatchRules', 'BankReconciliationMatchRuleSets',
+            // Invoice matching
+            'BankInvoiceMatchingRules', 'BankInvoiceMatchingRule',
+            'BankInvoiceMatchingRuleDetails', 'BankInvoiceMatchingRuleDetail',
+            // CODA / transaction codes
+            'BankCodaTransactionCodes', 'BankCodaGroups', 'BankCodaAccountStatements',
+            // Letters of guarantee
+            'BankLettersOfGuarantee', 'BankLettersOfGuaranteeLines',
+            // Deposits & facility agreements
+            'BankDepositHeaders', 'BankDepositLines',
+            'BankFacilityAgreements', 'BridgingAccounts',
+            // Cash flow forecasting
+            'CashFlowForecastAccounts', 'CashFlowForecastLedgerDimensions',
+            'CashFlowForecastEntryHeaders', 'CashFlowForecastEntryLines',
+            // Currency revaluation
+            'CurrencyRevaluationAccounts', 'CurrencyRevaluation',
+            // Bank transaction types
+            'BankTransactionTypes'
+        ],
+
+        // ─── FIXED ASSETS ────────────────────────────────────────────────────────
+        'Fixed Assets': [
+            // Asset master & groups
+            'FixedAssets', 'AssetTable', 'FixedAssetGroups', 'AssetGroup',
+            'FixedAssetParameters', 'AssetParameters', 'FixedAssetGroupParameters',
+            // Books & depreciation
+            'FixedAssetBooks', 'AssetBook', 'FixedAssetGroupBooks',
+            'FixedAssetBookSetups', 'FixedAssetValueModelSetups',
+            'FixedAssetDepreciationProfiles', 'AssetDepreciationProfile',
+            'AssetDeprBook', 'AssetGroupBonus', 'AssetGroupBonusBook', 'AssetBookReduction',
+            // Posting profiles
+            'FixedAssetPostingProfiles', 'AssetPosting',
+            // Transactions & journals
+            'FixedAssetTransactions', 'AssetTrans',
+            'FixedAssetJournalLines', 'AssetJournal', 'AssetJournalLine',
+            // Budgets
+            'FixedAssetBudgetHeaders', 'AssetBudgetHeader',
+            'FixedAssetBudgetLines', 'AssetBudgetLine',
+            // Insurance
+            'FixedAssetInsurances', 'AssetInventory', 'FixedAssetInsuranceTypes',
+            // Components & sub-categories
+            'FixedAssetComponents', 'FixedAssetComponentGroups',
+            'FixedAssetManufacturerModelNumbers',
+            'FixedAssetConditionCodes', 'FixedAssetBarCodeSetups',
+            // Leased & alternative assets
+            'FixedAssetLeasedAssets', 'AssetAltAsset', 'FixedAssetAlternatives',
+            // Reclassification & mass update
+            'FixedAssetReclassification', 'FixedAssetMassUpdate',
+            'FixedAssetTableChangeProposal',
+            // Acquisition & disposal
+            'FixedAssetAcquisitions', 'FixedAssetDisposalParameters',
+            // Inventory
+            'FixedAssetInventoryInformation', 'FixedAssetSpendLimits'
+        ],
+
+        // ─── CONSOLIDATION ───────────────────────────────────────────────────────
+        'Consolidation': [
+            // Consolidation account mapping
+            'LedgerConsolidateAccountGroups', 'MainAccountConsolidateAccounts', 'ConsolidationAccountGroups',
+            // Online consolidation
+            'ConsolidationOnlineParameters', 'LedgerConsolidateParameters', 'LedgerConsolidate',
+            // Elimination rules
+            'LedgerEliminationRules', 'LedgerEliminationRule', 'LedgerEliminationRuleLines',
+            'LedgerElimination', 'IntercompanyEliminationJournalHeaders', 'IntercompanyEliminationJournalLines',
+            // History
+            'LedgerConsolidateHistory', 'ConsolidationTransactions',
+            // Currency translation for consolidation
+            'CurrencyRevaluationAccounts', 'ConsolidationCurrencyTranslationAccounts',
+            // Financial reporting (Management Reporter)
+            'FinancialReportingParameters', 'FinancialReportDefinitions',
+            'FinancialReportRows', 'FinancialReportColumns', 'FinancialReportTrees',
+            'FinancialReportingTreeNode', 'FinancialReportingTreeRow', 'FinancialReportingTreeColumn'
+        ],
+
+        // ─── REMAINING MODULES (unchanged depth) ─────────────────────────────────
         'Inventory Management': [
             'ItemGroupTable', 'InventParameters', 'InventTable', 'InventItemSalesSetup', 'InventItemPurchSetup',
             'InventModelGroup', 'InventDimGroup', 'InventValueReportSetup', 'InventTableModule',
@@ -608,16 +808,6 @@ async function extractRealConfigurationData() {
             'ProdParameters', 'BOMParameters', 'ProdTable', 'ProdRouteTable', 'ProdBOM', 'ProdBOMLine',
             'ProdRoute', 'ProdRouteOpr', 'RouteTrans', 'RouteTable', 'ProdParmReportFinished',
             'ProdParmPickList', 'ProdParmJobList', 'ProdParmRouteCard', 'ProdParmProgress'
-        ],
-        'Fixed Assets': [
-            'AssetGroup', 'AssetParameters', 'AssetTable', 'AssetBook', 'AssetDepreciationProfile',
-            'AssetDeprBook', 'AssetJournal', 'AssetJournalLine', 'AssetInventory', 'AssetPosting',
-            'AssetTrans', 'AssetBudgetHeader', 'AssetBudgetLine'
-        ],
-        'Cash Management': [
-            'BankParameters', 'BankAccountTable', 'BankAccountTransactionType', 'BankAccountSetup',
-            'BankInvoiceMatchingRule', 'BankInvoiceMatchingRuleDetail', 'BankStatementFormat',
-            'BankAccountReconciliation', 'BankCheque', 'BankNegResponse'
         ],
         'Human Resources': [
             'HRMParameters', 'PayrollParameters', 'HcmWorker', 'HcmEmployment', 'HcmPosition',
@@ -641,15 +831,14 @@ async function extractRealConfigurationData() {
         ],
         'Tax': [
             'TaxParameters', 'TaxTable', 'TaxSetupTable', 'TaxGroupHeading', 'TaxItemGroupHeading',
-            'TaxRegimeTable', 'TaxRegistration', 'TaxJurisdiction'
+            'TaxRegimeTable', 'TaxRegistration', 'TaxJurisdiction',
+            'TaxSalesTaxGroups', 'TaxItemSalesTaxGroups', 'TaxLedgerAccountGroups',
+            'TaxExemptCodes', 'TaxAuthorities', 'TaxSettlementPeriods'
         ],
         'Budget': [
             'BudgetParameters', 'BudgetModel', 'BudgetPlanningProcess', 'BudgetPlanningStage',
-            'BudgetPlanningWorksheet', 'BudgetPlan', 'BudgetPlanLine'
-        ],
-        'Financial Reporting': [
-            'FinancialReportingParameters', 'FinancialReportingTreeNode', 'FinancialReportingTreeRow',
-            'FinancialReportingTreeColumn'
+            'BudgetPlanningWorksheet', 'BudgetPlan', 'BudgetPlanLine',
+            'BudgetControlConfiguration', 'BudgetControlRules', 'BudgetCycleTimeSpans'
         ]
     };
 
@@ -665,7 +854,12 @@ async function extractRealConfigurationData() {
     // Config data is system-wide (not LE-specific for most entities).
     // Fetch each entity ONCE and tag with selected LEs — avoids N×M explosion.
     // Only truly LE-specific entities (CompanyInfo, NumberSequence) get per-LE calls.
-    const leSpecificEntities = new Set(['CompanyInfo', 'NumberSequenceTable', 'NumberSequenceReference', 'BankAccountTable']);
+    const leSpecificEntities = new Set([
+        'CompanyInfo', 'NumberSequenceTable', 'NumberSequenceReference',
+        'BankAccountTable', 'BankAccounts',
+        'CustTable', 'Customers', 'VendTable', 'Vendors',
+        'LedgerParameters', 'GeneralLedgerParameters', 'LedgerConsolidate'
+    ]);
 
     for (const module of sidebarState.selectedModules) {
         const entities = moduleODataMap[module] || [];
