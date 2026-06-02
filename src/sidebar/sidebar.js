@@ -750,9 +750,18 @@ async function extractRealConfigurationData() {
             'InventItemQualityGroups', 'InventTestInstruments', 'InventTestVariables'
         ],
         'Project Management': [
-            // ProjectCostSalesPrices excluded — pricing master, can be large
-            'ProjectCategories', 'ProjectParameters',
-            'ProjectHourUtilizationSetup', 'ProjectPostingProfiles', 'ProjectResourceSetup'
+            // Parameters & groups
+            'ProjectParameters', 'ProjectGroups', 'ProjectContractTypes',
+            // Categories & category groups
+            'ProjectCategories', 'ProjCategoryGroup',
+            // Posting profiles (header + lines)
+            'ProjectPostingProfiles', 'ProjPostingProfileLines',
+            // Resource & utilization setup
+            'ProjectHourUtilizationSetup', 'ProjectResourceSetup',
+            // Billing & pricing setup (billing rules are config templates, not transactions)
+            'ProjectBillingRules', 'ProjectPeriodTypes',
+            // Worker cost price setup
+            'ProjectWorkerCostPrice', 'ProjectWorkerSalesPrice'
         ],
         'Manufacturing': [
             'ProductionParameters', 'BOMParameters', 'RouteGroups', 'RouteCostCategories',
