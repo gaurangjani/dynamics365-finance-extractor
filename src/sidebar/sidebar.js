@@ -684,7 +684,7 @@ async function extractRealConfigurationData() {
                         oDataSuccessCount++;
                         console.log(`✓ ${entity}${le ? ` [${le}]` : ''}: ${data.value.length} records`);
 
-                        data.value.slice(0, 20).forEach((item, idx) => {
+                        data.value.slice(0, 100).forEach((item, idx) => {
                             // Tag record with LE: use item's own DataAreaId if present, else first selected LE
                             const recordLE = item.DataAreaId || item.dataAreaId || le || sidebarState.selectedLE[0] || 'Global';
                             records.push({
@@ -696,7 +696,8 @@ async function extractRealConfigurationData() {
                                 Status: item.Status || item.Enabled || 'Active',
                                 CreatedDate: new Date().toISOString().split('T')[0],
                                 ModifiedDate: new Date().toISOString().split('T')[0],
-                                Details: JSON.stringify(item).substring(0, 150)
+                                Details: JSON.stringify(item).substring(0, 150),
+                                _rawFields: item  // Store full OData record for per-entity Excel sheets
                             });
                         });
                     } else {
@@ -941,34 +942,26 @@ function generateMockConfigData() {
 
 async function callODataAPI(entityName, legalEntity) {
     try {
-        // Try multiple URL patterns for the same entity
+        const baseUrl = window.location.origin;
+
+        // Try multiple URL patterns for the same entity (D365F /data/ path is correct)
         const urlPatterns = [
-            // Pattern 1: Direct OData with DataAreaId filter
+            // Pattern 1: D365F standard /data/ endpoint with LE filter
             () => {
-                let url = `/_odata/v1/${entityName}?$top=10`;
-                if (legalEntity) {
-                    url += `&$filter=DataAreaId eq '${legalEntity}'`;
-                }
+                let url = `${baseUrl}/data/${entityName}?$top=100`;
+                if (legalEntity) url += `&$filter=DataAreaId eq '${legalEntity}'`;
                 return url;
             },
-            // Pattern 2: Without DataAreaId filter
-            () => `/_odata/v1/${entityName}?$top=10`,
-            // Pattern 3: With different filter format
+            // Pattern 2: No filter (global config data)
+            () => `${baseUrl}/data/${entityName}?$top=100`,
+            // Pattern 3: lowercase dataAreaId filter variant
             () => {
-                let url = `/_odata/v1/${entityName}?$top=10`;
-                if (legalEntity) {
-                    url += `&$filter=dataAreaId eq '${legalEntity}'`;
-                }
+                let url = `${baseUrl}/data/${entityName}?$top=100`;
+                if (legalEntity) url += `&$filter=dataAreaId eq '${legalEntity}'`;
                 return url;
             },
-            // Pattern 4: Using companyId instead
-            () => {
-                let url = `/_odata/v1/${entityName}?$top=10`;
-                if (legalEntity) {
-                    url += `&$filter=companyId eq '${legalEntity}'`;
-                }
-                return url;
-            }
+            // Pattern 4: Legacy /_odata/v1/ path fallback
+            () => `${baseUrl}/_odata/v1/${entityName}?$top=100`,
         ];
 
         for (const urlPattern of urlPatterns) {
@@ -979,11 +972,11 @@ async function callODataAPI(entityName, legalEntity) {
                 const response = await fetch(url, {
                     method: 'GET',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'OData-Version': '4.0'
+                        'Accept': 'application/json',
+                        'OData-Version': '4.0',
+                        'OData-MaxVersion': '4.0'
                     },
-                    credentials: 'include',
-                    timeout: 5000
+                    credentials: 'include'
                 });
 
                 if (response.ok) {
@@ -1103,82 +1096,120 @@ async function downloadExcelFile(data) {
             throw new Error('XLSX library not loaded. Please reload the extension.');
         }
 
-        // Create workbook
+        const records = sidebarState.extractedRecords || [];
         const wb = XLSX.utils.book_new();
-        
-        // Sheet 1: Configuration Data
-        const configData = [];
-        
-        // Add headers
-        configData.push([
-            'Legal Entity',
-            'Module', 
-            'Entity',
-            'Record ID',
-            'Name',
-            'Status',
-            'Created Date',
-            'Modified Date',
-            'Details'
-        ]);
 
-        // Add configuration records
-        if (sidebarState.extractedRecords && sidebarState.extractedRecords.length > 0) {
-            sidebarState.extractedRecords.forEach(record => {
-                configData.push([
-                    record.LegalEntity || '',
-                    record.Module || '',
-                    record.Entity || '',
-                    record.RecordID || '',
-                    record.Name || '',
-                    record.Status || '',
-                    record.CreatedDate || '',
-                    record.ModifiedDate || '',
-                    record.Details || ''
-                ]);
-            });
-        } else {
-            configData.push(['No records extracted', '', '', '', '', '', '', '', '']);
-        }
+        // Sheet 1: Summary
+        const moduleCount = {};
+        const entityCount = {};
+        records.forEach(r => {
+            moduleCount[r.Module] = (moduleCount[r.Module] || 0) + 1;
+            entityCount[r.Entity] = (entityCount[r.Entity] || 0) + 1;
+        });
 
-        const ws1 = XLSX.utils.aoa_to_sheet(configData);
-        
-        // Auto-size columns
-        const colWidths = [20, 18, 15, 12, 30, 10, 18, 18, 30];
-        ws1['!cols'] = colWidths.map(width => ({ wch: width }));
-        
-        XLSX.utils.book_append_sheet(wb, ws1, 'Configuration');
-
-        // Sheet 2: Summary
         const summaryData = [
-            ['D365 FINANCE CONFIGURATION EXPORT', ''],
-            ['', ''],
+            ['D365 FINANCE CONFIGURATION EXPORT'],
+            [],
             ['Export Date', data.exportDate],
-            ['Total Records', sidebarState.extractedRecords?.length || 0],
-            ['Legal Entities', data.legalEntities.join(', ')],
-            ['Modules', data.modules.join(', ')],
-            ['', ''],
-            ['RECORD COUNT BY MODULE', ''],
+            ['Total Records', records.length],
+            ['Legal Entities Selected', data.legalEntities.join(', ')],
+            ['Modules Selected', data.modules.join(', ')],
+            [],
+            ['MODULE', 'RECORD COUNT'],
+            ...Object.entries(moduleCount).map(([m, c]) => [m, c]),
+            [],
+            ['ENTITY', 'RECORD COUNT'],
+            ...Object.entries(entityCount).map(([e, c]) => [e, c])
         ];
+        const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+        wsSummary['!cols'] = [{ wch: 35 }, { wch: 20 }];
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
 
-        // Add module statistics if records exist
-        if (sidebarState.extractedRecords && sidebarState.extractedRecords.length > 0) {
-            const moduleCount = {};
-            sidebarState.extractedRecords.forEach(record => {
-                const module = record.Module || 'Unknown';
-                moduleCount[module] = (moduleCount[module] || 0) + 1;
+        // Group records by Entity
+        const byEntity = {};
+        records.forEach(r => {
+            if (!byEntity[r.Entity]) byEntity[r.Entity] = [];
+            byEntity[r.Entity].push(r);
+        });
+
+        // One sheet per entity — with ALL raw OData fields as columns
+        const usedSheetNames = new Set(['Summary']);
+
+        for (const [entityName, entityRecords] of Object.entries(byEntity)) {
+            // Collect all unique field keys from raw OData data
+            const rawKeys = new Set();
+            entityRecords.forEach(r => {
+                if (r._rawFields && typeof r._rawFields === 'object') {
+                    Object.keys(r._rawFields).forEach(k => {
+                        // Skip OData metadata fields
+                        if (!k.startsWith('@odata') && !k.startsWith('@Microsoft')) {
+                            rawKeys.add(k);
+                        }
+                    });
+                }
             });
-            
-            Object.entries(moduleCount).forEach(([module, count]) => {
-                summaryData.push([module, count]);
-            });
+
+            // Build headers: LegalEntity first, then all OData fields, or fallback fixed columns
+            let headers;
+            let rows;
+
+            if (rawKeys.size > 0) {
+                // Real OData data — show all fields
+                const fieldList = ['LegalEntity', ...Array.from(rawKeys)];
+                headers = fieldList;
+                rows = entityRecords.map(r => {
+                    const raw = r._rawFields || {};
+                    return fieldList.map(k => {
+                        if (k === 'LegalEntity') return r.LegalEntity || '';
+                        const val = raw[k];
+                        if (val === null || val === undefined) return '';
+                        if (typeof val === 'object') return JSON.stringify(val);
+                        return val;
+                    });
+                });
+            } else {
+                // Mock/fallback data — use standard columns
+                headers = ['Legal Entity', 'Module', 'Record ID', 'Name', 'Status', 'Created Date', 'Modified Date', 'Details'];
+                rows = entityRecords.map(r => [
+                    r.LegalEntity || '',
+                    r.Module || '',
+                    r.RecordID || '',
+                    r.Name || '',
+                    r.Status || '',
+                    r.CreatedDate || '',
+                    r.ModifiedDate || '',
+                    r.Details || ''
+                ]);
+            }
+
+            // Excel sheet name max 31 chars, must be unique
+            let sheetName = entityName.substring(0, 31);
+            let suffix = 2;
+            while (usedSheetNames.has(sheetName)) {
+                const base = entityName.substring(0, 28);
+                sheetName = `${base}_${suffix++}`;
+            }
+            usedSheetNames.add(sheetName);
+
+            const sheetData = [headers, ...rows];
+            const ws = XLSX.utils.aoa_to_sheet(sheetData);
+
+            // Auto-size columns (max 40 chars wide)
+            ws['!cols'] = headers.map(() => ({ wch: 25 }));
+
+            XLSX.utils.book_append_sheet(wb, ws, sheetName);
         }
 
-        const ws2 = XLSX.utils.aoa_to_sheet(summaryData);
-        ws2['!cols'] = [{ wch: 30 }, { wch: 30 }];
-        XLSX.utils.book_append_sheet(wb, ws2, 'Summary');
+        // If no entity sheets were created, add a fallback sheet
+        if (Object.keys(byEntity).length === 0) {
+            const ws = XLSX.utils.aoa_to_sheet([
+                ['Legal Entity', 'Module', 'Entity', 'Record ID', 'Name', 'Status', 'Details'],
+                ['No records extracted - ensure OData is accessible and legal entities are selected']
+            ]);
+            XLSX.utils.book_append_sheet(wb, ws, 'No Data');
+        }
 
-        // Generate Excel binary and trigger download via Blob (works in Chrome extensions)
+        // Download via Blob (works in Chrome extensions)
         const wbBinary = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbBinary], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
@@ -1191,7 +1222,8 @@ async function downloadExcelFile(data) {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
 
-        showAlert('✓ Excel file downloaded successfully!', 'success');
+        const sheetCount = Object.keys(byEntity).length + 1; // +1 for Summary
+        showAlert(`✓ Excel downloaded! ${sheetCount} sheets (1 per entity + Summary)`, 'success');
     } catch (error) {
         console.error('Excel download error:', error);
         showAlert('Error downloading Excel file: ' + error.message, 'error');
