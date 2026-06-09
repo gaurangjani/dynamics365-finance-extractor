@@ -983,10 +983,18 @@ async function extractRealConfigurationData() {
                 } else {
                     console.log(`⚠ ${entity}: no data returned`);
                     oDataFailureCount++;
+                    let reason = 'No data returned (or not accessible for current user/environment)';
+                    if (data?._status === 'missing-entity-set') {
+                        reason = data._message || `Entity set for '${entity}' was not found in /data service document`;
+                    } else if (data?._status === 'empty') {
+                        reason = `Endpoint resolved (${data._resolvedEntity || entity}) but returned 0 rows`;
+                    } else if (data?._status === 'request-failed') {
+                        reason = data._message || `Endpoint call failed for '${entity}' (permissions/OData exposure/network)`;
+                    }
                     skippedEntities.push({
                         module,
                         entity,
-                        reason: 'No data returned (or not accessible for current user/environment)'
+                        reason
                     });
                 }
 
@@ -1286,39 +1294,173 @@ async function fetchAllPages(startUrl) {
     return allRecords;
 }
 
+let oDataEntitySetIndexPromise = null;
+
+async function getODataEntitySetIndex() {
+    if (oDataEntitySetIndexPromise) return oDataEntitySetIndexPromise;
+
+    oDataEntitySetIndexPromise = (async () => {
+        try {
+            const baseUrl = window.location.origin;
+            const response = await fetch(`${baseUrl}/data`, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json',
+                    'OData-Version': '4.0',
+                    'OData-MaxVersion': '4.0'
+                },
+                credentials: 'include'
+            });
+
+            if (!response.ok) {
+                console.warn(`Could not read OData service document (/data): HTTP ${response.status}`);
+                return null;
+            }
+
+            const serviceDoc = await response.json();
+            const sets = Array.isArray(serviceDoc?.value) ? serviceDoc.value : [];
+            const map = new Map();
+
+            sets.forEach(entry => {
+                const name = entry?.name || entry?.Name || entry?.url || entry?.Url;
+                if (typeof name === 'string' && name.trim()) {
+                    map.set(name.toLowerCase(), name);
+                }
+            });
+
+            if (map.size > 0) {
+                console.log(`Loaded ${map.size} OData entity sets from service document.`);
+            }
+
+            return map;
+        } catch (error) {
+            console.warn('Failed to load OData entity set index:', error.message);
+            return null;
+        }
+    })();
+
+    return oDataEntitySetIndexPromise;
+}
+
+function buildEntityNameCandidates(entityName) {
+    const candidates = [];
+    const addCandidate = (name) => {
+        if (!name || typeof name !== 'string') return;
+        if (!candidates.includes(name)) candidates.push(name);
+    };
+
+    addCandidate(entityName);
+
+    if (entityName.endsWith('Entity')) {
+        addCandidate(entityName.slice(0, -6));
+    } else {
+        addCandidate(`${entityName}Entity`);
+    }
+
+    if (entityName.endsWith('ies')) {
+        addCandidate(`${entityName.slice(0, -3)}y`);
+    }
+    if (entityName.endsWith('s')) {
+        addCandidate(entityName.slice(0, -1));
+    } else {
+        addCandidate(`${entityName}s`);
+    }
+
+    if (entityName.endsWith('Specifications')) {
+        addCandidate(entityName.replace(/Specifications$/, 'SpecificationEntity'));
+    }
+    if (entityName.endsWith('SpecificationEntity')) {
+        addCandidate(entityName.replace(/SpecificationEntity$/, 'Specifications'));
+    }
+
+    return candidates;
+}
+
+function resolveEntitySetCandidates(entityName, entitySetIndex) {
+    const rawCandidates = buildEntityNameCandidates(entityName);
+
+    if (!entitySetIndex || entitySetIndex.size === 0) {
+        return rawCandidates;
+    }
+
+    const resolved = [];
+    rawCandidates.forEach(candidate => {
+        const exact = entitySetIndex.get(candidate.toLowerCase());
+        if (exact && !resolved.includes(exact)) {
+            resolved.push(exact);
+        }
+    });
+
+    return resolved;
+}
+
 async function callODataAPI(entityName) {
     try {
         const baseUrl = window.location.origin;
+        const entitySetIndex = await getODataEntitySetIndex();
+        const resolvedCandidates = resolveEntitySetCandidates(entityName, entitySetIndex);
+
+        if (entitySetIndex && resolvedCandidates.length === 0) {
+            return {
+                value: [],
+                _status: 'missing-entity-set',
+                _message: `Entity set not found in /data service document for '${entityName}'`
+            };
+        }
+
+        const candidateNames = resolvedCandidates.length > 0
+            ? resolvedCandidates
+            : buildEntityNameCandidates(entityName);
+
+        let sawReachableEndpoint = false;
+        let lastResolvedEntity = null;
 
         // cross-company=true is REQUIRED to get data from all legal entities — without it
         // D365F OData silently returns data for the current company only.
         // $top=1000 is the D365F server-side maximum per page; nextLink handles the rest.
-        const urlPatterns = [
-            `${baseUrl}/data/${entityName}?cross-company=true&$top=1000`,
-            `${baseUrl}/data/${entityName}?$top=1000`,
-            `${baseUrl}/_odata/v1/${entityName}?cross-company=true&$top=1000`,
-        ];
+        for (const resolvedEntity of candidateNames) {
+            const urlPatterns = [
+                `${baseUrl}/data/${resolvedEntity}?cross-company=true&$top=1000`,
+                `${baseUrl}/data/${resolvedEntity}?$top=1000`,
+                `${baseUrl}/_odata/v1/${resolvedEntity}?cross-company=true&$top=1000`,
+            ];
 
-        for (const url of urlPatterns) {
-            try {
-                const records = await fetchAllPages(url);
-                if (records && records.length > 0) {
-                    console.log(`✓ ${entityName}: ${records.length} total records (all pages)`);
-                    return { value: records };
+            for (const url of urlPatterns) {
+                try {
+                    const records = await fetchAllPages(url);
+                    if (records && records.length > 0) {
+                        console.log(`✓ ${entityName} -> ${resolvedEntity}: ${records.length} total records (all pages)`);
+                        return { value: records, _status: 'success', _resolvedEntity: resolvedEntity };
+                    }
+                    if (records === null) continue; // HTTP error — try next pattern
+
+                    sawReachableEndpoint = true;
+                    lastResolvedEntity = resolvedEntity;
+                    // records.length === 0 — entity exists but is empty; still a valid response
+                    console.log(`⚠ ${entityName} -> ${resolvedEntity}: entity found but empty at ${url}`);
+                } catch (innerError) {
+                    console.log(`⚠ Failed with pattern ${url}: ${innerError.message}`);
                 }
-                if (records === null) continue; // HTTP error — try next pattern
-                // records.length === 0 — entity exists but is empty; still a valid response
-                console.log(`⚠ ${entityName}: entity found but empty at ${url}`);
-            } catch (innerError) {
-                console.log(`⚠ Failed with pattern ${url}: ${innerError.message}`);
             }
         }
 
+        if (sawReachableEndpoint) {
+            return {
+                value: [],
+                _status: 'empty',
+                _resolvedEntity: lastResolvedEntity || entityName
+            };
+        }
+
         console.log(`No data found for ${entityName}`);
-        return { value: [] };
+        return {
+            value: [],
+            _status: 'request-failed',
+            _message: `Unable to read endpoint for '${entityName}' from configured URL patterns`
+        };
     } catch (error) {
         console.error(`Critical OData API error for ${entityName}:`, error);
-        return { value: [] };
+        return { value: [], _status: 'request-failed', _message: error.message || 'Unknown OData error' };
     }
 }
 
@@ -1905,28 +2047,74 @@ function buildExcelCopilotPrompt(records = [], comparison = null, skippedEntitie
         .filter(r => String(r.coverage || '').includes('/'))
         .sort((a, b) => a.leCount - b.leCount)
         .slice(0, 15)
-        .map(r => `${r.module} > ${r.entity} (coverage ${r.coverage}, records ${r.recordCount})`)
-        .join('; ');
+        .map(r => `- ${r.module} > ${r.entity} (coverage: ${r.coverage}, records: ${r.recordCount})`)
+        .join('\n');
 
     const skippedList = (skippedEntities || [])
         .slice(0, 30)
-        .map(s => `${s.module} > ${s.entity}`)
-        .join('; ');
+        .map(s => `- ${s.module} > ${s.entity} | reason: ${s.reason || 'N/A'}`)
+        .join('\n');
+
+    const legalEntitiesText = (selectedLE || []).join(', ') || 'All legal entities in workbook';
+    const modulesText = (selectedModules || []).join(', ') || 'All modules in workbook';
 
     return [
-        'Create a detailed reconciliation report from this workbook.',
-        `Scope: Legal entities = ${(selectedLE || []).join(', ') || 'All in workbook'}. Modules = ${(selectedModules || []).join(', ') || 'All in workbook'}.`,
-        'Tasks:',
-        '1) Build a module/entity reconciliation matrix showing record counts by legal entity and coverage %.',
-        '2) Flag mismatches where an entity is missing in one or more legal entities.',
-        '3) For each mismatch, list specific keys/rows present in one legal entity and absent in others.',
-        '4) Classify findings by severity: Critical (posting/profile/tax setup), Medium (parameter differences), Low (description/text differences).',
-        '5) Produce a root-cause hypothesis per mismatch (setup gap, permission, entity not exposed, or expected local variation).',
-        '6) Create an action plan with owner-ready remediation steps and validation checks.',
-        `Context: Total entities compared = ${comp.totalEntities || 0}. Top low-coverage entities = ${topDiff || 'N/A'}.`,
-        `Skipped entities during extraction = ${(skippedEntities || []).length}. Skipped list = ${skippedList || 'None'}.`,
-        'Output format: Executive summary, detailed discrepancy table, remediation plan, and final sign-off checklist.'
-    ].join(' ');
+        'You are a D365 Finance configuration reconciliation analyst.',
+        '',
+        'Objective:',
+        'Create a precise reconciliation report from this workbook, focused on cross-legal-entity configuration consistency.',
+        '',
+        'Scope:',
+        `- Legal entities: ${legalEntitiesText}`,
+        `- Modules: ${modulesText}`,
+        `- Total entities compared: ${comp.totalEntities || 0}`,
+        `- Entity calls skipped: ${(skippedEntities || []).length}`,
+        '',
+        'Priority entities with low coverage:',
+        topDiff || '- None',
+        '',
+        'Skipped entities (from extraction):',
+        skippedList || '- None',
+        '',
+        'Required output (in this exact structure):',
+        '1) Executive Summary',
+        '- Total mismatches by severity (Critical/Medium/Low).',
+        '- Top 10 entities with the highest business risk.',
+        '- Overall readiness score as percentage and RAG status (Green/Amber/Red).',
+        '',
+        '2) Reconciliation Matrix',
+        '- Create a table with columns:',
+        '  Module | Entity | Record Count by LE | Coverage % | Missing LEs | Severity | Notes',
+        '- Sort by Severity desc, then Coverage % asc.',
+        '',
+        '3) Detailed Variance Analysis',
+        '- For each mismatched entity, list exact keys present in one LE and absent in others.',
+        '- If key is unavailable, derive a stable business key from Name/Code/Id fields.',
+        '- Distinguish structural mismatch (missing records) vs value mismatch (same key, different values).',
+        '',
+        '4) Root Cause Hypothesis',
+        '- Classify each issue as one of:',
+        '  Setup gap | Security/permission | Endpoint not exposed | Expected localization variance | Data quality issue',
+        '- Give confidence level: High/Medium/Low.',
+        '',
+        '5) Remediation Plan',
+        '- Provide owner-ready actions with this format:',
+        '  Action | Owner Role | Target LE(s) | Validation Step | Priority | ETA',
+        '- Include a quick-win list (can be completed in <= 2 days).',
+        '',
+        '6) Sign-off Checklist',
+        '- Add a final checklist to confirm reconciliation closure per module.',
+        '',
+        'Severity rules:',
+        '- Critical: posting profiles, posting definitions, tax setup, intercompany, currency/revaluation, budget control.',
+        '- Medium: parameter mismatches affecting behavior but not core posting.',
+        '- Low: descriptive text/labels/non-behavioral metadata.',
+        '',
+        'Output quality rules:',
+        '- Be specific and evidence-based; do not use generic statements.',
+        '- Reference exact entity names and legal entities in every finding.',
+        '- End with a "Go/No-Go" recommendation for config migration readiness.'
+    ].join('\n');
 }
 
 function generateTextReport(data, exportRecords = []) {

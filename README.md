@@ -462,6 +462,10 @@ To add additional entities, edit `src/sidebar/sidebar.js` in `moduleODataMap`:
 1. Verify all selected entities exist in D365F
 2. Check user permissions for those entities
 3. Try single LE extraction first
+4. Review the skipped entities reason:
+   - `Entity set not found in /data service document` = configured name is not exposed as an endpoint in this environment
+   - `Endpoint resolved (...) but returned 0 rows` = endpoint is valid but has no records for your scope
+   - `Endpoint call failed ...` = permissions/OData exposure/network issue
 
 ## 📈 Performance Benchmarks
 
@@ -484,7 +488,9 @@ Typical extraction times (on standard hardware):
 - Large entities increase runtime because all `@odata.nextLink` pages are fetched.
 
 ### Reliability behavior
-- Multiple URL patterns are attempted per entity to improve compatibility across environments.
+- Entity endpoints are validated against the live OData service document (`/data`) before calls.
+- Alternate naming patterns are auto-tried (for example `Entity` suffix and common singular/plural variants).
+- Multiple URL patterns are attempted per resolved entity set to improve compatibility across environments.
 - Pagination is supported and follows `@odata.nextLink` until all pages are read.
 - Failed entities are skipped and extraction continues; results can be partially complete.
 - There is currently no automatic retry/backoff for transient `429/5xx` responses.

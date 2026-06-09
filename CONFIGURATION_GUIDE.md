@@ -242,6 +242,10 @@ Located in: **Procurement** module
 4. Note the exact **Entity Name** (appears in the Name column)
 5. Determine which **Module** it belongs to (General Ledger, Accounts Payable, etc.)
 
+Important:
+- Data management entity names and OData entity set names can differ in some environments.
+- The extractor now validates configured names against the live `/data` service document and automatically tries common name variants.
+
 ### Step 2: Update the moduleODataMap
 
 Edit `src/sidebar/sidebar.js` and locate the `moduleODataMap` object:
@@ -304,13 +308,17 @@ Update `README.md` to document the new entity:
 Internally, the extension queries entities using OData v4:
 
 ```
-GET https://{environment}.dynamics.com/_odata/v1/{EntityName}?$select=...&$top=10000
+GET https://{environment}.dynamics.com/data/{EntitySetName}?cross-company=true&$top=1000
 ```
 
 Example for Tax Codes:
 ```
-GET https://yourenvironment.dynamics.com/_odata/v1/SalesTaxCodes?$top=10000
+GET https://yourenvironment.dynamics.com/data/SalesTaxCodes?cross-company=true&$top=1000
 ```
+
+Fallback patterns are also attempted automatically:
+- `GET /data/{EntitySetName}?$top=1000`
+- `GET /_odata/v1/{EntitySetName}?cross-company=true&$top=1000`
 
 The extension automatically:
 - Filters by selected legal entities (using DataAreaId)

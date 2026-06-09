@@ -200,6 +200,7 @@
 - Formula-ready for calculations
 - Summary sheet includes skipped entities list
 - Summary sheet includes ready-to-use Excel Copilot reconciliation prompt
+- Skipped entities now show clearer reason categories (endpoint missing, endpoint empty, endpoint call failed)
 
 ### CSV (.csv)
 **Best for:** System import, data migration
@@ -232,3 +233,9 @@
 - **Network:** Requires stable internet connection throughout extraction
 - **Browser:** Chrome or Edge recommended
 - **Memory:** Works efficiently with 1GB+ available RAM
+
+## Endpoint Validation Notes
+
+- Configured entities are validated against the live OData service document (`/data`) during extraction.
+- Common endpoint name variants are auto-tried when exact names are not found.
+- If an endpoint does not exist in the environment, it is reported explicitly in skipped entities.
