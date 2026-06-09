@@ -7,6 +7,8 @@ A powerful Chrome/Edge browser extension for extracting and comparing Dynamics 3
 - **Multi-Legal Entity Support**: Extract configuration from 100+ legal entities simultaneously
 - **Multiple Export Formats**: Excel (.xlsx), CSV (.csv), JSON (.json), and Text (.txt)
 - **Selectable Output Content**: Choose Data only, Comparison only, or both before export
+- **Audit-Friendly Summary Output**: Includes skipped entity list and extraction call stats
+- **Excel Copilot Reconciliation Prompt**: Auto-generated, ready-to-use prompt embedded in export summaries
 - **Configuration Comparison**: Automatically identify differences between legal entity configurations
 - **Session-Based Authentication**: Works with your current D365F session (no additional credentials needed)
 - **Performance Optimized**: Handles large-scale extractions efficiently using IndexedDB
@@ -14,29 +16,219 @@ A powerful Chrome/Edge browser extension for extracting and comparing Dynamics 3
 
 ## 📦 What Gets Extracted
 
+The extension extracts configuration-focused master/setup data across 16 D365F modules:
+
 ### Core Configuration Entities:
 
-**General Ledger:**
-- Ledgers
-- Chart of Accounts (Main Accounts)
-- Financial Dimension Hierarchies
-- Dimension Attributes
-- Ledger Parameters
+**General Ledger (59 entities):**
+- Chart of Accounts (Main Accounts, Categories, Hierarchies)
+- Ledgers & Ledger Parameters
+- Financial Dimensions (Attributes, Hierarchies, Sets)
+- Allocation Rules & Bases
+- Fiscal Calendars & Accounting Periods
+- Currencies & Exchange Rate Types
+- Posting Setup & Account Structures
+- Intercompany & Settlement Setup
 
-**Accounts Receivable:**
-- Customer Posting Profiles
+**Accounts Receivable (53 entities):**
+- Customer Groups & Posting Profiles
+- Payment Methods & Payment Schedules
+- Cash Discounts & Payment Terms
+- Collections & Interest Setup
+- Trade Agreements & Statistics
+- Charges Setup
 
-**Accounts Payable:**
-- Vendor Posting Profiles
+**Accounts Payable (52 entities):**
+- Vendor Groups & Posting Profiles
+- Payment Methods & Payment Schedules
+- Invoice Matching Policies
+- Charges & Vendor Categories
+- Purchase Policies & Procurement Categories
 
-**Inventory Management:**
-- Inventory Posting Profiles
+**Cash & Bank Management (40 entities):**
+- Bank Accounts & Types
+- Bank Statement Formats
+- Reconciliation & Invoice Matching Rules
+- Cheque Layouts & Negative Payment Formats
+- Cash Flow Forecast Setup
 
-**Additional:**
-- Legal Entity Information
-- Sales Tax Groups & Codes
-- Number Sequences
-- Intercompany Setup
+**Fixed Assets (42 entities):**
+- Asset Groups & Parameters
+- Books & Depreciation Profiles
+- Posting Profiles & Insurance Types
+- Component & Classification Setup
+
+**Tax (23 entities):**
+- Sales Tax Codes & Groups
+- Tax Parameters & Authorities
+- Withholding Tax Setup
+- Tax Exempt Codes & Groups
+- Tax Components & Mapping
+- Tax Intervals & Jurisdictions
+- Tax Reporting & Intrastat Setup
+- Tax Transaction Code Mapping
+
+**Inventory Management (27 entities):**
+- Item Groups & Model Groups
+- Warehouse Setup
+- Posting Profiles
+- Quality Setup
+
+**Project Management (17 entities):**
+- Project Parameters & Groups
+- Categories & Posting Profiles
+- Resource & Billing Setup
+
+### Additional Module Coverage:
+
+- Consolidation (24 entities)
+- Manufacturing (14 entities)
+- Human Resources (18 entities)
+- Procurement (16 entities)
+- Sales (18 entities)
+- Organization Admin (16 entities)
+- Budget (14 entities)
+- Cost Accounting (16 entities)
+
+## 📋 Complete Entity Reference
+
+### Configuration Master Data Entities by Category
+
+**Tax & Duty Management:**
+- SalesTaxCodes
+- SalesTaxGroups
+- ItemSalesTaxGroups
+- TaxExemptCodes
+- TaxExemptCodeGroupHeaders
+- TaxExemptCodeGroupMembers
+- TaxAuthorities
+- TaxParameters
+- TaxSettlementPeriods
+- TaxRegistrationTypes
+- WithholdingTaxCodes
+- WithholdingTaxGroups
+- TaxComponentsTable
+- TaxTable
+- TaxIntrastatCommodityCodes
+- TaxJurisdictions
+- TaxJurisdictionGroups
+- TaxTransactionCodeMapping
+- TaxReportingCodes
+- TaxFreeAccounts
+
+**Payment Setup:**
+- CustomerPaymentMethods
+- CustomerPaymentMethodSpecifications
+- CustomerPaymentSchedules
+- CustomerPaymentScheduleLines
+- VendorPaymentMethods
+- VendorPaymentMethodSpecifications
+- VendorPaymentSchedules
+- VendorPaymentScheduleLines
+- PaymentTerms
+- PaymentDays
+- PaymentDayLines
+- CashDiscounts
+
+**Posting Profiles:**
+- CustomerPostingProfiles
+- CustomerPostingProfileLines
+- VendorPostingProfiles
+- VendorPostingProfileLines
+- FixedAssetPostingProfiles
+- FixedAssetPostingProfileLines
+- InventPostingProfiles
+- InventInventoryProfileCustomerVendorLedgerEntity
+- ProjectPostingProfiles
+- ProjPostingProfileLines
+- ProjLedgerPostingDefinitionEntity
+
+**Master Data Setup:**
+- Currencies
+- ExchangeRateTypes
+- NumberSequenceCodes
+- NumberSequenceReferences
+- NumberSequenceGroupReferences
+- LedgerParameters
+- GeneralLedgerParameters
+- Departments
+- Divisions
+- Teams
+- OperatingUnits
+
+**Ledger & Accounts:**
+- MainAccounts
+- MainAccountCategories
+- LedgerChartOfAccounts
+- MainAccountLegalEntityOverrides
+- MainAccountConsolidateAccounts
+- LedgerConsolidateAccountGroups
+- DimensionAttributes
+- DimensionHierarchies
+- DimensionHierarchyNodes
+- DimensionSets
+- DimensionSetLines
+- LedgerExchAdjPostingEntity
+- LedgerPostingJournalEntity
+- JournalizingTransactionPostingDefinitionEntity
+
+**Banks & Cash Management:**
+- BankAccounts
+- BankAccountTypes
+- BankAccountTransactionTypes
+- BankParameters
+- BankStatementFormats
+- BankChequeLayouts
+- BankReconciliationMatchRules
+- CashFlowForecastAccounts
+
+**Vendors & Customers:**
+- CustomerGroups
+- VendorGroups
+- VendorCategories
+- VendorCertificateTypes
+- CustomerCharges
+- VendorCharges
+- TradeAgreementJournalNames
+- SalesAgreementClassifications
+
+**Inventory & Warehouse:**
+- ItemGroups
+- InventoryParameters
+- InventoryModelGroups
+- InventoryDimensionGroups
+- Warehouses
+- InventoryPostingSetup
+- InventTestGroups
+- InventQualityGroups
+- InventLedgerPostingDefinitionCombinationEntity
+- InventInventoryLedgerPostingDefinitionEntity
+- InventProcurementLedgerPostingDefinitionEntity
+- InventProductionLedgerPostingDefinitionEntity
+- InventSalesLedgerPostingDefinitionEntity
+- InventStandardCostVarianceLedgerPostingDefinitionEntity
+
+**Projects & Assets:**
+- ProjectParameters
+- ProjectGroups
+- ProjectCategories
+- ProjectPostingProfiles
+- FixedAssetGroups
+- FixedAssetParameters
+- FixedAssetBooks
+- FixedAssetDepreciationProfiles
+
+**Organization & Admin:**
+- CompanyInfo
+- LedgerIntercompanyAccounts
+- LedgerIntercompanyPosting
+- ReasonCodes
+- FiscalCalendars
+- FiscalCalendarPeriods
+- OrganizationHierarchyTypes
+- BudgetParameters
+- BudgetModels
+- BudgetControlConfiguration
 
 ## 🚀 Installation
 
@@ -111,30 +303,28 @@ Open the generated `.xlsx` file in Excel to:
 ## 🏗️ Project Structure
 
 ```
-Dynamics365Finance/
+dynamics365-finance-extractor/
 ├── manifest.json              # Extension configuration
+├── package.json
+├── README.md
 ├── src/
-│   ├── popup/
-│   │   ├── toggle.html       # Lightweight popup toggle UI
-│   │   └── toggle.js         # Popup toggle logic
-│   ├── sidebar/
-│   │   ├── sidebar.html      # Main extraction UI
-│   │   ├── sidebar.css       # Sidebar styling
-│   │   └── sidebar.js        # Extraction + export logic
 │   ├── background/
-│   │   └── background.js     # Service worker (extraction engine)
+│   │   └── background.js
 │   ├── content/
-│   │   └── content.js        # Page context script
-│   ├── utils/
-│   │   ├── exporters.js      # Export format handlers
-│   │   ├── comparator.js     # Comparison engine
-│   │   └── (helper utils)
-│   └── constants/
-│       └── entities.js       # D365F entity definitions
-│   └── lib/
-│       └── xlsx.full.min.js  # Excel generation library
-├── icons/                     # Extension icons
-└── README.md
+│   │   └── content.js
+│   ├── lib/
+│   │   └── xlsx.full.min.js
+│   ├── popup/
+│   │   ├── toggle.html
+│   │   └── toggle.js
+│   ├── sidebar/
+│   │   ├── sidebar.css
+│   │   ├── sidebar.html
+│   │   └── sidebar.js
+│   └── utils/
+│       └── exporters.js
+├── icons/
+│   └── ...
 ```
 
 ## 🔧 Architecture
@@ -157,14 +347,11 @@ Content Script (content.js)
 Background Service Worker (background.js)
 - Manages extraction sessions
 - Coordinates multi-LE extraction
-- Handles non-sidebar extraction/export flows
 - Manages file downloads
 - Uses IndexedDB for large datasets
 
-**Utilities**
-- **exporters.js**: Converts data to Excel, CSV, JSON, Text formats
-- **comparator.js**: Analyzes differences across legal entities
-- **constants/entities.js**: D365F entity metadata
+Utilities (utils/exporters.js)
+- Export helper scaffolding for format-specific output handling
 
 ### Data Flow:
 
@@ -173,13 +360,11 @@ User selects entities
          ↓
 Popup sends message to Content Script
          ↓
-Content Script fetches data from OData APIs
+Content Script injects sidebar and starts extraction workflow
          ↓
-Data sent to Background Service Worker
+Sidebar fetches data from D365 OData endpoints
          ↓
-Comparator analyzes differences
-         ↓
-Exporters generate files in selected formats
+Comparison and export generation in sidebar workflow
          ↓
 Files available for download
 ```
@@ -227,28 +412,23 @@ Unchanged Records: 134
 
 ### Adjusting Performance:
 
-For very large deployments (200+ legal entities), modify `background.js`:
+For very large deployments (200+ legal entities), adjust extraction scope:
 
 ```javascript
-// Increase batch size (default: 10-20 LEs per batch)
-const BATCH_SIZE = 30;
-
-// Increase concurrency (default: 5 parallel requests)
-const MAX_PARALLEL_REQUESTS = 10;
+// Narrow extraction by module first (recommended)
+// Example: run Tax only, then AR/AP in separate runs
 ```
 
 ### Custom Entity Selection:
 
-To add additional entities, edit `src/constants/entities.js`:
+To add additional entities, edit `src/sidebar/sidebar.js` in `moduleODataMap`:
 
 ```javascript
-'CustomEntity': {
-    name: 'CustomEntity',
-    displayName: 'Custom Configuration',
-    category: 'Custom',
-    odataCollection: 'CustomEntities',
-    description: 'Your custom entity description'
-}
+'Tax': [
+   'TaxParameters',
+   'SalesTaxCodes',
+   'YourNewEntity' // Add new OData entity here
+]
 ```
 
 ## 🔐 Security & Privacy
@@ -269,7 +449,7 @@ To add additional entities, edit `src/constants/entities.js`:
 
 ### Extraction timeout (100+ LEs):
 1. Close other browser tabs
-2. Increase batch size in background.js
+2. Run modules in smaller batches (for example: Tax first, then AR/AP)
 3. Try extracting fewer legal entities at once
 4. Check network connectivity
 
@@ -295,23 +475,40 @@ Typical extraction times (on standard hardware):
 | 100 | 5 | 10-15 min |
 | 100 | 10 | 15-25 min |
 
-## 🔄 Version History
+## ⚡ Performance, Reliability, and Limits
 
-v1.1.0 (2026-06-09)
-- Sidebar-first workflow documented and aligned with current implementation
-- Added selectable export output controls:
-   - Include Data
-   - Include Comparison
-- Export generation now honors selected output options in XLSX/CSV/JSON/TXT
-- Fixed legal-entity normalization/filtering regression that could return 0 records
-- Added guard to prevent silent empty data exports
+### Performance impact
+- The extractor runs one OData request per selected entity (not per legal entity).
+- A built-in throttle adds ~80ms delay between entity requests and page requests.
+- With large entity lists, delay overhead alone can be significant before network/server time.
+- Large entities increase runtime because all `@odata.nextLink` pages are fetched.
 
-**v1.0.0** (2026-06-01)
-- Initial release
-- Core extraction functionality
-- Multi-format export support
-- Configuration comparison
-- Multi-legal entity support
+### Reliability behavior
+- Multiple URL patterns are attempted per entity to improve compatibility across environments.
+- Pagination is supported and follows `@odata.nextLink` until all pages are read.
+- Failed entities are skipped and extraction continues; results can be partially complete.
+- There is currently no automatic retry/backoff for transient `429/5xx` responses.
+
+### Data record restrictions
+- Data visibility is permission-based: users only extract entities/records they can read.
+- Legal entity filtering keeps selected companies plus global rows.
+- High-volume transactional entities are intentionally excluded for performance reasons.
+- Some DMF target entities might not be exposed as OData collections in every environment/version.
+- Legal entity discovery requests use `$top=1000`, so very large environments may need pagination hardening.
+
+## 🔄 Version Status
+
+This project is currently in pre-release and has not been officially released yet.
+
+### Unreleased (working draft)
+- Sidebar-first extraction workflow
+- Multi-format export support (XLSX/CSV/JSON/TXT)
+- Configurable output (Data and/or Comparison)
+- Expanded module/entity coverage across 16 modules
+- Summary output enhancements:
+   - Skipped entities list
+   - Excel Copilot reconciliation prompt
+- Performance/reliability notes and operational limits documented
 
 ## 📝 License
 

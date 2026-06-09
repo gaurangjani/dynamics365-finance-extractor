@@ -59,21 +59,22 @@ console.log('Use window.D365ConfigDebug for debugging');
 
 // Module definitions
 const D365F_MODULES = {
-    'General Ledger': { color: '#0078D4', count: 50 },
-    'Accounts Receivable': { color: '#7FBA00', count: 45 },
-    'Accounts Payable': { color: '#FFB900', count: 45 },
-    'Cash & Bank Management': { color: '#1ABC9C', count: 35 },
-    'Fixed Assets': { color: '#9B59B6', count: 35 },
-    'Consolidation': { color: '#2C3E50', count: 20 },
-    'Inventory Management': { color: '#00D4FF', count: 10 },
-    'Project Management': { color: '#6C63FF', count: 8 },
-    'Manufacturing': { color: '#E74C3C', count: 9 },
-    'Human Resources': { color: '#F39C12', count: 8 },
-    'Procurement': { color: '#34495E', count: 10 },
-    'Sales': { color: '#C0392B', count: 11 },
-    'Organization Admin': { color: '#8E44AD', count: 9 },
-    'Tax': { color: '#E67E22', count: 15 },
-    'Budget': { color: '#27AE60', count: 10 }
+    'General Ledger': { color: '#0078D4', count: 59 },
+    'Accounts Receivable': { color: '#7FBA00', count: 53 },
+    'Accounts Payable': { color: '#FFB900', count: 52 },
+    'Cash & Bank Management': { color: '#1ABC9C', count: 40 },
+    'Fixed Assets': { color: '#9B59B6', count: 42 },
+    'Consolidation': { color: '#2C3E50', count: 24 },
+    'Inventory Management': { color: '#00D4FF', count: 27 },
+    'Project Management': { color: '#6C63FF', count: 17 },
+    'Manufacturing': { color: '#E74C3C', count: 14 },
+    'Human Resources': { color: '#F39C12', count: 18 },
+    'Procurement': { color: '#34495E', count: 16 },
+    'Sales': { color: '#C0392B', count: 18 },
+    'Organization Admin': { color: '#8E44AD', count: 16 },
+    'Tax': { color: '#E67E22', count: 23 },
+    'Budget': { color: '#27AE60', count: 14 },
+    'Cost Accounting': { color: '#1F77B4', count: 16 }
 };
 
 // Initialize sidebar immediately (DOMContentLoaded may have already fired)
@@ -616,6 +617,7 @@ function normalizeLegalEntity(value) {
 
 async function extractRealConfigurationData() {
     const records = [];
+    const skippedEntities = [];
     // Config/setup/master data entities ONLY — no transactional data.
     // Each entity is fetched ONCE without LE filter; D365F OData returns DataAreaId
     // per row automatically, so all legal entities appear combined in one response.
@@ -655,6 +657,9 @@ async function extractRealConfigurationData() {
             'DimensionSets', 'DimensionSetLines', 'FinancialDimensionDefaultTemplates',
             // Currencies & exchange rate types (rates themselves excluded — too large)
             'Currencies', 'ExchangeRateTypes', 'CurrencyTranslations',
+            // Posting definition entities (as shown in Data Management target entities)
+            'LedgerExchAdjPostingEntity', 'LedgerPostingJournalEntity',
+            'JournalizingTransactionPostingDefinitionEntity',
             // Fiscal calendars & periods
             'FiscalCalendars', 'FiscalCalendarYears', 'FiscalCalendarPeriods',
             'AccountingPeriods', 'PeriodTypes',
@@ -668,10 +673,16 @@ async function extractRealConfigurationData() {
             'LedgerClosingRoundDifferenceAccounts', 'LedgerYearEndParameters',
             // Accrual setup
             'LedgerAccrualTable',
+            // Reporting tree and account category setup
+            'FinancialTagCategories', 'FinancialTags',
+            // Reversal and correction setup
+            'GeneralLedgerReasonCodeMappings',
             // Reason codes
             'ReasonCodes', 'ReasonCodeDescriptions',
             // Posting setup
-            'LedgerPosting', 'TaxLedgerAccountGroups', 'CashFlowForecastLedgerAccounts'
+            'LedgerPosting', 'TaxLedgerAccountGroups', 'CashFlowForecastLedgerAccounts',
+            // Journal workflow/setup policies
+            'LedgerJournalWorkflowConfigurations'
         ],
 
         // ─── ACCOUNTS RECEIVABLE ─────────────────────────────────────────────────
@@ -683,19 +694,21 @@ async function extractRealConfigurationData() {
             'CustomerPaymentSchedules', 'CustomerPaymentScheduleLines',
             'CashDiscounts', 'PaymentTerms', 'PaymentDays', 'PaymentDayLines',
             // Collections setup
-            'CustomerCollectionLetterCodes',
+            'CustomerCollectionLetterCodes', 'CustomerCollectionLetterIntervals',
             // Interest setup
-            'CustomerInterestCodes',
+            'CustomerInterestCodes', 'CustomerInterestCodeLines',
             // Write-off setup (CustomerCreditLimits excluded — per-customer data)
             'CustomerWriteOffCodes', 'CustomerWriteOffReasonCodeGroups',
             // Charges setup
-            'CustomerCharges',
+            'CustomerCharges', 'CustomerChargeGroupHeaders', 'CustomerChargeGroupLines',
             // Agreement & trade setup
             'SalesAgreementClassifications', 'TradeAgreementJournalNames',
             // Statistics & reporting setup
             'CustomerStatisticsGroups', 'CustomerStatisticsPeriods',
             // Journal names setup
-            'CustomerJournalNames'
+            'CustomerJournalNames',
+            // Additional customer setup
+            'CustomerRebatePrograms', 'CustomerRebateProgramLines'
         ],
 
         // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
@@ -709,7 +722,7 @@ async function extractRealConfigurationData() {
             // Invoice matching setup
             'VendorInvoiceMatchingPolicies', 'VendorInvoiceMatchingPolicyDetails',
             // Charges setup
-            'VendorCharges',
+            'VendorCharges', 'VendorChargeGroupHeaders', 'VendorChargeGroupLines',
             // Journal names setup
             'VendorJournalNames',
             // Positive pay format setup
@@ -717,7 +730,10 @@ async function extractRealConfigurationData() {
             // Procurement policies setup
             'PurchasePolicies', 'PurchaseSetup',
             // Procurement categories setup
-            'ProcurementCategories', 'VendorProcurementCategories'
+            'ProcurementCategories', 'VendorProcurementCategories',
+            // Additional vendor setup
+            'VendorInvoiceDeclarationTypes', 'VendorInvoiceDeclarationTypeLines',
+            'VendorPostingProfileGroups'
         ],
 
         // ─── CASH & BANK MANAGEMENT ──────────────────────────────────────────────
@@ -730,18 +746,19 @@ async function extractRealConfigurationData() {
             'BankChequeLayouts', 'BankNegativePaymentFormats', 'BankChequePaymentControls',
             // Reconciliation rules setup
             'BankReconciliationMatchRules', 'BankReconciliationMatchRuleSets',
+            'BankReconciliationReasonCodes',
             // Invoice matching rules setup
             'BankInvoiceMatchingRules', 'BankInvoiceMatchingRuleDetails',
             // CODA transaction code setup
-            'BankCodaTransactionCodes', 'BankCodaGroups',
+            'BankCodaTransactionCodes', 'BankCodaGroups', 'BankCodaGroupLines',
             // Facility & bridging setup
-            'BankFacilityAgreements', 'BridgingAccounts',
+            'BankFacilityAgreements', 'BridgingAccounts', 'BankFacilityAgreementLines',
             // Cash flow forecast setup
             'CashFlowForecastAccounts', 'CashFlowForecastLedgerDimensions',
             // Currency revaluation setup
             'CurrencyRevaluationAccounts',
             // Bank transaction types setup
-            'BankTransactionTypes'
+            'BankTransactionTypes', 'BankAccountReconciliationProfiles'
         ],
 
         // ─── FIXED ASSETS ────────────────────────────────────────────────────────
@@ -753,16 +770,18 @@ async function extractRealConfigurationData() {
             'FixedAssetValueModelSetups', 'FixedAssetDepreciationProfiles',
             'AssetGroupBonus', 'AssetGroupBonusBook', 'AssetBookReduction',
             // Posting profiles setup
-            'FixedAssetPostingProfiles',
+            'FixedAssetPostingProfiles', 'FixedAssetPostingProfileLines',
+            // Microsoft Learn (CDM) documented posting profile entities
+            'AssetPostingProfileEntity', 'AssetPostingProfileDisposalEntity',
             // Insurance setup
-            'FixedAssetInsuranceTypes',
+            'FixedAssetInsuranceTypes', 'FixedAssetInsurancePolicies',
             // Component & classification setup
             'FixedAssetComponents', 'FixedAssetComponentGroups',
             'FixedAssetManufacturerModelNumbers', 'FixedAssetConditionCodes', 'FixedAssetBarCodeSetups',
             // Disposal & acquisition setup
-            'FixedAssetDisposalParameters',
+            'FixedAssetDisposalParameters', 'FixedAssetAcquisitionMethods',
             // Spend limit setup
-            'FixedAssetSpendLimits'
+            'FixedAssetSpendLimits', 'FixedAssetBookTypeMappings'
         ],
 
         // ─── CONSOLIDATION ───────────────────────────────────────────────────────
@@ -775,7 +794,10 @@ async function extractRealConfigurationData() {
             'ConsolidationCurrencyTranslationAccounts',
             // Financial reporting (Management Reporter) setup
             'FinancialReportingParameters', 'FinancialReportDefinitions',
-            'FinancialReportRows', 'FinancialReportColumns', 'FinancialReportTrees'
+            'FinancialReportRows', 'FinancialReportColumns', 'FinancialReportTrees',
+            // Consolidation translation setup
+            'ConsolidationExchangeRateTypes', 'ConsolidationDimensionMappings',
+            'ConsolidationEliminationGroups'
         ],
 
         // ─── REMAINING MODULES ────────────────────────────────────────────────────
@@ -785,9 +807,21 @@ async function extractRealConfigurationData() {
             'InventoryDimensionGroups', 'InventoryStorageDimensionGroups',
             'InventoryTrackingDimensionGroups', 'Warehouses',
             'InventoryPostingSetup', 'InventPostingProfiles', 'ItemSetupSupplyTypes',
+            // Microsoft Learn (CDM) documented inventory posting profile entity
+            'InventInventoryProfileCustomerVendorLedgerEntity',
+            // Inventory posting definition entities (as shown in Data Management target entities)
+            'InventLedgerPostingDefinitionCombinationEntity',
+            'InventInventoryLedgerPostingDefinitionEntity',
+            'InventProcurementLedgerPostingDefinitionEntity',
+            'InventProductionLedgerPostingDefinitionEntity',
+            'InventSalesLedgerPostingDefinitionEntity',
+            'InventStandardCostVarianceLedgerPostingDefinitionEntity',
+            'InventoryReservationHierarchies', 'InventoryOwnerGroups',
             // Quality setup
             'InventTestGroups', 'InventTestGroupMembers', 'InventQualityGroups',
-            'InventItemQualityGroups', 'InventTestInstruments', 'InventTestVariables'
+            'InventItemQualityGroups', 'InventTestInstruments', 'InventTestVariables',
+            // Inventory control setup
+            'InventCountingGroups', 'InventBlockingReasons', 'InventTransferParameters'
         ],
         'Project Management': [
             // Parameters & groups
@@ -796,16 +830,23 @@ async function extractRealConfigurationData() {
             'ProjectCategories', 'ProjCategoryGroup',
             // Posting profiles (header + lines)
             'ProjectPostingProfiles', 'ProjPostingProfileLines',
+            // Microsoft Learn (CDM) documented project posting setup entity
+            'ProjLedgerPostingDefinitionEntity',
             // Resource & utilization setup
             'ProjectHourUtilizationSetup', 'ProjectResourceSetup',
             // Billing & pricing setup (billing rules are config templates, not transactions)
             'ProjectBillingRules', 'ProjectPeriodTypes',
             // Worker cost price setup
-            'ProjectWorkerCostPrice', 'ProjectWorkerSalesPrice'
+            'ProjectWorkerCostPrice', 'ProjectWorkerSalesPrice',
+            // Funding and estimation setup
+            'ProjectFundingSourceGroups', 'ProjectEstimateModels',
+            'ProjectForecastModels', 'ProjectInvoiceProposalParameters'
         ],
         'Manufacturing': [
             'ProductionParameters', 'BOMParameters', 'RouteGroups', 'RouteCostCategories',
-            'ProductionPoolGroups', 'ProductionFlushingPrinciples'
+            'ProductionPoolGroups', 'ProductionFlushingPrinciples',
+            'BOMCalculationGroups', 'ProductionGroups', 'ProductionUnits',
+            'KanbanRules', 'KanbanEventRules'
         ],
         'Human Resources': [
             // HumanResourcePositions excluded — position master data, can be large
@@ -814,12 +855,29 @@ async function extractRealConfigurationData() {
             'PayrollParameters', 'BenefitTypes', 'BenefitPlans',
             // Compensation structure setup
             'CompensationPlans', 'CompensationLevels', 'CompensationGrids',
-            'CompensationPayFrequency', 'CompensationStructure'
+            'CompensationPayFrequency', 'CompensationStructure',
+            // Additional HR setup
+            'PositionTypes', 'PositionHierarchyTypes', 'JobTaskAreas',
+            'BenefitEligibilityRules'
         ],
         'Sales': [
             // TradeAgreementJournalNames already in AR — not duplicated here
             'SalesParameters', 'SalesPools',
-            'SalesStatisticsGroups', 'CommissionSalesGroups', 'CommissionCustomerGroups'
+            'SalesStatisticsGroups', 'CommissionSalesGroups', 'CommissionCustomerGroups',
+            // Sales setup
+            'SalesOrderPools', 'SalesReasonCodes', 'SalesCategoryHierarchies',
+            'SalesDiscountCodes', 'SalesCommissionCalculationGroups'
+        ],
+        'Procurement': [
+            // Purchasing and sourcing setup
+            'PurchasePolicies', 'PurchaseSetup', 'ProcurementCategories',
+            'ProcurementCategoryHierarchies', 'ProcurementCategoryAccessPolicies',
+            // Vendor sourcing and approval setup
+            'VendorProcurementCategories', 'VendorEvaluationCriteria',
+            'VendorEvaluationCriterionGroups', 'VendorEvaluationScoringModels',
+            // Requisition and RFQ setup
+            'PurchaseRequisitionParameters', 'RequestForQuotationParameters',
+            'PurchaseAgreementClassifications'
         ],
         'Organization Admin': [
             'CompanyInfo', 'NumberSequenceGroups', 'OperatingUnits',
@@ -827,14 +885,25 @@ async function extractRealConfigurationData() {
             'Departments', 'Divisions', 'Teams',
             // Number sequence formats and assignments
             'NumberSequenceCodes', 'NumberSequenceReferences',
-            'NumberSequenceGroupReferences'
+            'NumberSequenceGroupReferences',
+            // Regional and address setup
+            'AddressBooks', 'AddressBookParameters', 'CountryRegions',
+            'LanguageTexts', 'TimeZones'
         ],
         'Tax': [
             // TaxLedgerAccountGroups already in GL — not duplicated here
+            // Core tax setup
             'TaxParameters', 'SalesTaxCodes', 'SalesTaxGroups', 'ItemSalesTaxGroups',
             'TaxExemptCodes', 'TaxAuthorities',
             'TaxSettlementPeriods', 'TaxRegistrationTypes', 'WithholdingTaxCodes',
-            'WithholdingTaxGroups', 'TaxReportingCodes', 'TaxFreeAccounts'
+            'WithholdingTaxGroups', 'TaxReportingCodes', 'TaxFreeAccounts',
+            // Tax components & mapping
+            'TaxComponentsTable', 'TaxExemptCodeGroupHeaders',
+            'TaxTable', 'TaxIntrastatCommodityCodes', 'TaxTransactionCodeMapping',
+            // Tax interval & jurisdiction setup
+            'TaxIntervals', 'TaxJurisdictions', 'TaxJurisdictionGroups',
+            // Tax exempt group members
+            'TaxExemptCodeGroupMembers'
         ],
         'Cost Accounting': [
             // Cost accounting ledger & parameters
@@ -845,12 +914,17 @@ async function extractRealConfigurationData() {
             'CostCenters', 'CostAllocationBases', 'CostAllocationRules',
             'CostAllocationPolicies', 'CostDistributionPolicies',
             // Cost rate setup
-            'CostAccountingOverheadRates', 'CostAccountingCostGroups'
+            'CostAccountingOverheadRates', 'CostAccountingCostGroups',
+            // Cost object and behavior setup
+            'CostObjects', 'CostBehaviors', 'CostControlUnits',
+            'CostAccountingDimensions'
         ],
         'Budget': [
             'BudgetParameters', 'BudgetModels', 'BudgetCycleTimeSpans',
             'BudgetControlConfiguration', 'BudgetControlRules', 'BudgetControlGroups',
-            'BudgetPlanningProcesses', 'BudgetPlanningStages', 'BudgetPlanningWorksheetColumns'
+            'BudgetPlanningProcesses', 'BudgetPlanningStages', 'BudgetPlanningWorksheetColumns',
+            'BudgetRegisterEntryConfigurations', 'BudgetPlanningPriorities',
+            'BudgetPlanningLayouts', 'BudgetWorkflowConfigurations'
         ]
     };
 
@@ -909,6 +983,11 @@ async function extractRealConfigurationData() {
                 } else {
                     console.log(`⚠ ${entity}: no data returned`);
                     oDataFailureCount++;
+                    skippedEntities.push({
+                        module,
+                        entity,
+                        reason: 'No data returned (or not accessible for current user/environment)'
+                    });
                 }
 
                 // Throttle: 80ms between calls to be respectful of server load
@@ -916,6 +995,11 @@ async function extractRealConfigurationData() {
             } catch (error) {
                 oDataFailureCount++;
                 console.warn(`✗ Error fetching ${entity}: ${error.message}`);
+                skippedEntities.push({
+                    module,
+                    entity,
+                    reason: error.message || 'Request failed'
+                });
             }
         }
     }
@@ -926,7 +1010,8 @@ async function extractRealConfigurationData() {
         selectedEntityCalls: selectedEntities,
         successfulEntityCalls: oDataSuccessCount,
         failedEntityCalls: oDataFailureCount,
-        extractedRecordCount: records.length
+        extractedRecordCount: records.length,
+        skippedEntities
     };
 
     // Never inject synthetic data unless explicitly enabled for debugging.
@@ -1341,11 +1426,28 @@ function downloadFile(event) {
     }
 
     const comparisonSummary = buildComparisonSummary(exportRecords, sidebarState.selectedLE);
+    const stats = sidebarState.lastExtractionStats || {};
+    const skippedEntities = Array.isArray(stats.skippedEntities) ? stats.skippedEntities : [];
+    const copilotPrompt = buildExcelCopilotPrompt(
+        exportRecords,
+        comparisonSummary,
+        skippedEntities,
+        sidebarState.selectedLE,
+        sidebarState.selectedModules
+    );
 
     const data = {
         exportDate: new Date().toLocaleString(),
         legalEntities: sidebarState.selectedLE,
         modules: sidebarState.selectedModules,
+        summary: {
+            selectedEntityCalls: stats.selectedEntityCalls || 0,
+            successfulEntityCalls: stats.successfulEntityCalls || 0,
+            failedEntityCalls: stats.failedEntityCalls || 0,
+            extractedRecordCount: stats.extractedRecordCount || exportRecords.length,
+            skippedEntities,
+            excelCopilotPrompt: copilotPrompt
+        },
         options: {
             includeData: sidebarState.includeData,
             includeComparison: sidebarState.includeComparison
@@ -1509,6 +1611,7 @@ async function downloadExcelFile(data, exportRecords = []) {
         const includeData = Boolean(sidebarState.includeData);
         const includeComparison = Boolean(sidebarState.includeComparison);
         const stats = sidebarState.lastExtractionStats;
+        const skippedEntities = Array.isArray(stats?.skippedEntities) ? stats.skippedEntities : [];
 
         // Determine LE list: selected LEs (or all found in data if none selected)
         const selectedLEs = sidebarState.selectedLE && sidebarState.selectedLE.length > 0
@@ -1528,6 +1631,18 @@ async function downloadExcelFile(data, exportRecords = []) {
                 ? 'D365 FINANCE CONFIGURATION EXPORT (DATA ONLY)'
                 : 'D365 FINANCE CONFIGURATION EXPORT (COMPARISON ONLY)';
 
+        const copilotPrompt = buildExcelCopilotPrompt(
+            records,
+            buildComparisonSummary(records, selectedLEs),
+            skippedEntities,
+            selectedLEs,
+            data.modules || sidebarState.selectedModules
+        );
+
+        const skippedLines = skippedEntities.length === 0
+            ? [['None', '', '']]
+            : skippedEntities.slice(0, 50).map(s => [s.entity, s.module, s.reason]);
+
         const summaryData = [
             [exportTitle],
             [],
@@ -1540,6 +1655,7 @@ async function downloadExcelFile(data, exportRecords = []) {
             ['Total Records Extracted', records.length],
             ['Entity Calls Successful', stats ? stats.successfulEntityCalls : 'N/A'],
             ['Entity Calls Failed', stats ? stats.failedEntityCalls : 'N/A'],
+            ['Skipped Entities', skippedEntities.length],
             [],
             ['ENTITY', 'MODULE', 'RECORDS', 'LEs WITH DATA', 'COVERAGE'],
             ...records.reduce((acc, r) => {
@@ -1553,7 +1669,13 @@ async function downloadExcelFile(data, exportRecords = []) {
                     acc.rows.push([r.Entity, r.Module, records.filter(x => x.Entity === r.Entity).length, leCount, coverage]);
                 }
                 return acc;
-            }, { seen: new Set(), rows: [] }).rows
+            }, { seen: new Set(), rows: [] }).rows,
+            [],
+            ['SKIPPED ENTITY', 'MODULE', 'REASON'],
+            ...skippedLines,
+            [],
+            ['EXCEL COPILOT RECONCILIATION PROMPT'],
+            [copilotPrompt]
         ];
 
         const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
@@ -1712,6 +1834,20 @@ function generateCSV(data, exportRecords = []) {
         });
     }
 
+    csv += '\nSKIPPED ENTITIES\n';
+    csv += 'Entity,Module,Reason\n';
+    const skipped = data.summary?.skippedEntities || [];
+    if (skipped.length === 0) {
+        csv += 'None,,\n';
+    } else {
+        skipped.forEach(s => {
+            csv += `"${escapeCSVValue(s.entity)}","${escapeCSVValue(s.module)}","${escapeCSVValue(s.reason)}"\n`;
+        });
+    }
+
+    csv += '\nEXCEL COPILOT RECONCILIATION PROMPT\n';
+    csv += `"${escapeCSVValue(data.summary?.excelCopilotPrompt || 'N/A')}"\n`;
+
     // Add summary at end
     csv += '\n\n';
     csv += 'SUMMARY\n';
@@ -1761,6 +1897,36 @@ function escapeCSVValue(value) {
         return `"${str.replace(/"/g, '""')}"`;
     }
     return str;
+}
+
+function buildExcelCopilotPrompt(records = [], comparison = null, skippedEntities = [], selectedLE = [], selectedModules = []) {
+    const comp = comparison || buildComparisonSummary(records, selectedLE);
+    const topDiff = (comp.rows || [])
+        .filter(r => String(r.coverage || '').includes('/'))
+        .sort((a, b) => a.leCount - b.leCount)
+        .slice(0, 15)
+        .map(r => `${r.module} > ${r.entity} (coverage ${r.coverage}, records ${r.recordCount})`)
+        .join('; ');
+
+    const skippedList = (skippedEntities || [])
+        .slice(0, 30)
+        .map(s => `${s.module} > ${s.entity}`)
+        .join('; ');
+
+    return [
+        'Create a detailed reconciliation report from this workbook.',
+        `Scope: Legal entities = ${(selectedLE || []).join(', ') || 'All in workbook'}. Modules = ${(selectedModules || []).join(', ') || 'All in workbook'}.`,
+        'Tasks:',
+        '1) Build a module/entity reconciliation matrix showing record counts by legal entity and coverage %.',
+        '2) Flag mismatches where an entity is missing in one or more legal entities.',
+        '3) For each mismatch, list specific keys/rows present in one legal entity and absent in others.',
+        '4) Classify findings by severity: Critical (posting/profile/tax setup), Medium (parameter differences), Low (description/text differences).',
+        '5) Produce a root-cause hypothesis per mismatch (setup gap, permission, entity not exposed, or expected local variation).',
+        '6) Create an action plan with owner-ready remediation steps and validation checks.',
+        `Context: Total entities compared = ${comp.totalEntities || 0}. Top low-coverage entities = ${topDiff || 'N/A'}.`,
+        `Skipped entities during extraction = ${(skippedEntities || []).length}. Skipped list = ${skippedList || 'None'}.`,
+        'Output format: Executive summary, detailed discrepancy table, remediation plan, and final sign-off checklist.'
+    ].join(' ');
 }
 
 function generateTextReport(data, exportRecords = []) {
@@ -1820,6 +1986,21 @@ function generateTextReport(data, exportRecords = []) {
             text += `  • ${row.module} > ${row.entity}: ${row.coverage} (records: ${row.recordCount})\n`;
         });
     }
+
+    const skipped = data.summary?.skippedEntities || [];
+    text += '\n\nSKIPPED ENTITIES:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+    if (skipped.length === 0) {
+        text += 'None\n';
+    } else {
+        skipped.forEach(s => {
+            text += `  • ${s.module} > ${s.entity} — ${s.reason}\n`;
+        });
+    }
+
+    text += '\n\nEXCEL COPILOT RECONCILIATION PROMPT:\n';
+    text += '─────────────────────────────────────────────────────────\n';
+    text += `${data.summary?.excelCopilotPrompt || 'N/A'}\n`;
 
     text += '\n\nSUMMARY:\n';
     text += '─────────────────────────────────────────────────────────\n';
