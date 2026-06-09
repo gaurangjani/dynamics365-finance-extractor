@@ -7,12 +7,18 @@ let sidebarState = {
     legalEntities: [],
     selectedLE: [],
     selectedModules: [],
-    selectedFormat: 'xlsx'
+    selectedFormat: 'xlsx',
+    extractedRecords: [],
+    lastCompletedRecords: [],
+    includeData: true,
+    includeComparison: true,
+    lastExtractionStats: null
 };
 
 // Expose state to console for debugging
 window.D365ConfigDebug = {
     getSidebarState: () => sidebarState,
+    allowMockFallback: false,
     getPageCompanies: () => {
         const selects = document.querySelectorAll('select, [role="listbox"], [role="combobox"]');
         const results = [];
@@ -164,6 +170,22 @@ function attachEventListeners() {
             sidebarState.selectedFormat = e.target.value;
         });
     });
+
+    const includeDataCheckbox = document.getElementById('includeData');
+    if (includeDataCheckbox) {
+        sidebarState.includeData = includeDataCheckbox.checked;
+        includeDataCheckbox.addEventListener('change', (e) => {
+            sidebarState.includeData = e.target.checked;
+        });
+    }
+
+    const includeComparisonCheckbox = document.getElementById('includeComparison');
+    if (includeComparisonCheckbox) {
+        sidebarState.includeComparison = includeComparisonCheckbox.checked;
+        includeComparisonCheckbox.addEventListener('change', (e) => {
+            sidebarState.includeComparison = e.target.checked;
+        });
+    }
 }
 
 function renderModules() {
@@ -470,7 +492,8 @@ function renderLegalEntities(legalEntities) {
         const input = document.createElement('input');
         input.type = 'checkbox';
         input.className = 'le-checkbox';
-        input.value = le.value;
+        // Keep checkbox value canonical so extraction filters reliably against DataAreaId.
+        input.value = normalizeLegalEntity(le.value) || le.value;
         input.checked = true;
 
         const span = document.createElement('span');
@@ -524,6 +547,11 @@ async function startExtraction() {
         return;
     }
 
+    if (!sidebarState.includeData && !sidebarState.includeComparison) {
+        showAlert('Please select at least one output option: Include Data or Include Comparison', 'error');
+        return;
+    }
+
     sidebarState.isExtracting = true;
     document.getElementById('extractionForm').style.display = 'none';
     document.getElementById('progressSection').style.display = 'flex';
@@ -558,7 +586,9 @@ async function simulateExtraction() {
 
         progressFill.style.width = '100%';
         progressPercent.textContent = '100%';
-        progressText.textContent = `Extraction Complete! ${extractedRecords.length} records found`;
+        progressText.textContent = extractedRecords.length > 0
+            ? `Extraction Complete! ${extractedRecords.length} records found`
+            : 'Extraction complete with 0 records found';
 
         sidebarState.isExtracting = false;
 
@@ -572,6 +602,16 @@ async function simulateExtraction() {
         showAlert('Extraction error: ' + error.message, 'error');
         sidebarState.isExtracting = false;
     }
+}
+
+function normalizeLegalEntity(value) {
+    if (value === null || value === undefined) return '';
+    const normalized = String(value).trim().toUpperCase();
+    if (!normalized) return '';
+
+    // Handles values like "USMF - US Operations" or "USMF (Demo)" from page-derived selectors.
+    const codeMatch = normalized.match(/[A-Z0-9_]{2,}/);
+    return codeMatch ? codeMatch[0] : normalized;
 }
 
 async function extractRealConfigurationData() {
@@ -820,6 +860,12 @@ async function extractRealConfigurationData() {
     const selectedEntities = sidebarState.selectedModules.reduce((total, mod) => total + (moduleODataMap[mod]?.length || 0), 0);
     console.log(`📊 Will make ~${selectedEntities} OData calls (config fetched once, not per-LE)`);
 
+    const selectedLESet = new Set(
+        (sidebarState.selectedLE || [])
+            .map(normalizeLegalEntity)
+            .filter(Boolean)
+    );
+
     let oDataSuccessCount = 0;
     let oDataFailureCount = 0;
 
@@ -840,8 +886,19 @@ async function extractRealConfigurationData() {
 
                     data.value.forEach((item, idx) => {
                         const recordLE = item.DataAreaId || item.dataAreaId || item.LegalEntityId || 'Global';
+                        const normalizedRecordLE = normalizeLegalEntity(recordLE);
+
+                        // Keep data scoped to selected LEs. Global rows are preserved.
+                        if (
+                            selectedLESet.size > 0 &&
+                            normalizedRecordLE !== 'GLOBAL' &&
+                            !selectedLESet.has(normalizedRecordLE)
+                        ) {
+                            return;
+                        }
+
                         records.push({
-                            LegalEntity: recordLE,
+                            LegalEntity: normalizedRecordLE || 'GLOBAL',
                             Module: module,
                             Entity: entity,
                             RecordID: item.RecId || item.EntityID || item.Key || item.dataAreaId || item.CompanyId || `${entity}_${idx}`,
@@ -865,10 +922,21 @@ async function extractRealConfigurationData() {
 
     console.log(`Extraction Summary: ${oDataSuccessCount} successful, ${oDataFailureCount} failed`);
 
-    // If no OData data was found, generate mock data for demonstration
+    sidebarState.lastExtractionStats = {
+        selectedEntityCalls: selectedEntities,
+        successfulEntityCalls: oDataSuccessCount,
+        failedEntityCalls: oDataFailureCount,
+        extractedRecordCount: records.length
+    };
+
+    // Never inject synthetic data unless explicitly enabled for debugging.
     if (records.length === 0) {
-        console.log('No OData records found, generating mock data for demonstration...');
-        records.push(...generateMockConfigData());
+        if (window.D365ConfigDebug?.allowMockFallback === true) {
+            console.log('No OData records found, debug mock fallback enabled.');
+            records.push(...generateMockConfigData());
+        } else {
+            console.warn('No OData records found. Returning an empty result set.');
+        }
     }
 
     return records;
@@ -1170,6 +1238,10 @@ async function callODataAPI(entityName) {
 }
 
 function showResults(records = []) {
+    // Keep a stable snapshot for export so download does not depend on transient UI state.
+    sidebarState.lastCompletedRecords = Array.isArray(records) ? records.slice() : [];
+    sidebarState.extractedRecords = sidebarState.lastCompletedRecords;
+
     document.getElementById('progressSection').style.display = 'none';
     document.getElementById('resultsSection').style.display = 'flex';
 
@@ -1181,6 +1253,7 @@ function showResults(records = []) {
             <div class="result-item-name">📊 Configuration Export</div>
             <div class="result-item-details">
                 Format: ${sidebarState.selectedFormat.toUpperCase()}<br>
+                Output: ${sidebarState.includeData ? 'Data' : ''}${sidebarState.includeData && sidebarState.includeComparison ? ' + ' : ''}${sidebarState.includeComparison ? 'Comparison' : ''}<br>
                 Records: ${records.length} | LEs: ${sidebarState.selectedLE.length} | Modules: ${sidebarState.selectedModules.length}<br>
                 Generated: ${timestamp}
             </div>
@@ -1190,18 +1263,102 @@ function showResults(records = []) {
         </div>
     `;
 
-    showAlert('✓ Extraction completed! Found ' + records.length + ' configuration records.', 'success');
+    if (records.length > 0) {
+        showAlert('✓ Extraction completed! Found ' + records.length + ' configuration records.', 'success');
+    } else {
+        const stats = sidebarState.lastExtractionStats;
+        const details = stats
+            ? ` Calls: ${stats.successfulEntityCalls}/${stats.selectedEntityCalls} successful.`
+            : '';
+        showAlert('Extraction finished with 0 records. Verify OData access and selected legal entities.' + details, 'info');
+    }
+}
+
+function buildComparisonSummary(records = [], selectedLE = []) {
+    const selectedLEs = (selectedLE && selectedLE.length > 0)
+        ? selectedLE
+        : [...new Set(records.map(r => r.LegalEntity).filter(Boolean))].sort();
+
+    const byEntity = {};
+    records.forEach(r => {
+        const key = `${r.Module}__${r.Entity}`;
+        if (!byEntity[key]) {
+            byEntity[key] = {
+                module: r.Module,
+                entity: r.Entity,
+                les: new Set(),
+                recordCount: 0
+            };
+        }
+        if (r.LegalEntity) byEntity[key].les.add(r.LegalEntity);
+        byEntity[key].recordCount += 1;
+    });
+
+    const rows = Object.values(byEntity).map(item => {
+        const leCount = item.les.size;
+        const coverage = selectedLEs.length > 0
+            ? `${leCount}/${selectedLEs.length}`
+            : `${leCount}`;
+        return {
+            module: item.module,
+            entity: item.entity,
+            recordCount: item.recordCount,
+            leCount,
+            coverage
+        };
+    });
+
+    return {
+        legalEntities: selectedLEs,
+        totalEntities: rows.length,
+        rows
+    };
+}
+
+function getExportRecords() {
+    if (Array.isArray(sidebarState.lastCompletedRecords) && sidebarState.lastCompletedRecords.length > 0) {
+        return sidebarState.lastCompletedRecords;
+    }
+    if (Array.isArray(sidebarState.extractedRecords) && sidebarState.extractedRecords.length > 0) {
+        return sidebarState.extractedRecords;
+    }
+    return [];
 }
 
 function downloadFile(event) {
     event.preventDefault();
 
+    if (!sidebarState.includeData && !sidebarState.includeComparison) {
+        showAlert('Please select at least one output option: Include Data or Include Comparison', 'error');
+        return;
+    }
+
+    const exportRecords = getExportRecords();
+
+    if (sidebarState.includeData && exportRecords.length === 0) {
+        showAlert('No extracted records available to export. Please run extraction again.', 'error');
+        return;
+    }
+
+    const comparisonSummary = buildComparisonSummary(exportRecords, sidebarState.selectedLE);
+
     const data = {
         exportDate: new Date().toLocaleString(),
         legalEntities: sidebarState.selectedLE,
         modules: sidebarState.selectedModules,
-        configuration: generateConfigurationData()
+        options: {
+            includeData: sidebarState.includeData,
+            includeComparison: sidebarState.includeComparison
+        }
     };
+
+    if (sidebarState.includeData) {
+        data.configuration = generateConfigurationData(exportRecords);
+    }
+
+    if (sidebarState.includeComparison) {
+        data.comparison = comparisonSummary;
+    }
 
     let content, mimeType, extension;
 
@@ -1213,23 +1370,23 @@ function downloadFile(event) {
             break;
 
         case 'csv':
-            content = generateCSV(data);
+            content = generateCSV(data, exportRecords);
             mimeType = 'text/csv;charset=utf-8;';
             extension = 'csv';
             break;
 
         case 'txt':
-            content = generateTextReport(data);
+            content = generateTextReport(data, exportRecords);
             mimeType = 'text/plain;charset=utf-8;';
             extension = 'txt';
             break;
 
         case 'xlsx':
             // For Excel export, generate proper XLSX file
-            return downloadExcelFile(data);
+            return downloadExcelFile(data, exportRecords);
 
         default:
-            content = generateCSV(data);
+            content = generateCSV(data, exportRecords);
             mimeType = 'text/csv;charset=utf-8;';
             extension = 'csv';
     }
@@ -1341,14 +1498,17 @@ function buildRecordSheet(byLE, leList, allEntityRecords) {
     return [headers, ...rows];
 }
 
-async function downloadExcelFile(data) {
+async function downloadExcelFile(data, exportRecords = []) {
     try {
         if (typeof XLSX === 'undefined') {
             throw new Error('XLSX library not loaded. Please reload the extension.');
         }
 
-        const records = sidebarState.extractedRecords || [];
+        const records = Array.isArray(exportRecords) ? exportRecords : [];
         const wb = XLSX.utils.book_new();
+        const includeData = Boolean(sidebarState.includeData);
+        const includeComparison = Boolean(sidebarState.includeComparison);
+        const stats = sidebarState.lastExtractionStats;
 
         // Determine LE list: selected LEs (or all found in data if none selected)
         const selectedLEs = sidebarState.selectedLE && sidebarState.selectedLE.length > 0
@@ -1362,13 +1522,24 @@ async function downloadExcelFile(data) {
             if (r.LegalEntity) entityCoverage[r.Entity].add(r.LegalEntity);
         });
 
+        const exportTitle = includeData && includeComparison
+            ? 'D365 FINANCE CONFIGURATION EXPORT (DATA + COMPARISON)'
+            : includeData
+                ? 'D365 FINANCE CONFIGURATION EXPORT (DATA ONLY)'
+                : 'D365 FINANCE CONFIGURATION EXPORT (COMPARISON ONLY)';
+
         const summaryData = [
-            ['D365 FINANCE CONFIGURATION COMPARISON'],
+            [exportTitle],
             [],
             ['Export Date', data.exportDate],
             ['Legal Entities Compared', selectedLEs.join(', ')],
             ['Modules', data.modules.join(', ')],
+            ['Include Data', includeData ? 'Yes' : 'No'],
+            ['Include Comparison', includeComparison ? 'Yes' : 'No'],
             ['Total Entities Extracted', Object.keys(entityCoverage).length],
+            ['Total Records Extracted', records.length],
+            ['Entity Calls Successful', stats ? stats.successfulEntityCalls : 'N/A'],
+            ['Entity Calls Failed', stats ? stats.failedEntityCalls : 'N/A'],
             [],
             ['ENTITY', 'MODULE', 'RECORDS', 'LEs WITH DATA', 'COVERAGE'],
             ...records.reduce((acc, r) => {
@@ -1442,21 +1613,28 @@ async function downloadExcelFile(data) {
             });
 
             // ── Section 2: COMPARISON (cross-LE side-by-side) ──
-            const maxPerLE = Math.max(...leList.map(le => byLE[le].length));
+            const maxPerLE = leList.length > 0 ? Math.max(...leList.map(le => byLE[le].length)) : 0;
             const comparisonRows = maxPerLE <= 1
                 ? buildParameterSheet(byLE, leList)
                 : buildRecordSheet(byLE, leList, entityRecords);
 
-            // Combine: raw data, blank gap, comparison heading, comparison table
-            const colCount = Math.max(rawHeaders.length, comparisonRows[0]?.length || 0);
-            const sheetData = [
-                [`=== ALL SOURCE DATA — ${entityName} ===`],
-                rawHeaders,
-                ...rawRows,
-                [],
-                [`=== CROSS-LEGAL ENTITY COMPARISON — ${entityName} ===`],
-                ...comparisonRows
-            ];
+            const sheetData = [];
+            if (includeData) {
+                sheetData.push([`=== ALL SOURCE DATA — ${entityName} ===`]);
+                sheetData.push(rawHeaders);
+                sheetData.push(...rawRows);
+            }
+            if (includeComparison) {
+                if (sheetData.length > 0) sheetData.push([]);
+                sheetData.push([`=== CROSS-LEGAL ENTITY COMPARISON — ${entityName} ===`]);
+                sheetData.push(...comparisonRows);
+            }
+
+            const colCount = Math.max(
+                includeData ? rawHeaders.length : 0,
+                includeComparison ? (comparisonRows[0]?.length || 0) : 0,
+                1
+            );
 
             // Unique sheet name, max 31 chars
             let sheetName = entityName.substring(0, 31);
@@ -1493,16 +1671,15 @@ async function downloadExcelFile(data) {
         URL.revokeObjectURL(url);
 
         const sheetCount = usedSheetNames.size;
-        showAlert(`✓ Excel downloaded! ${sheetCount} sheets with cross-LE comparison`, 'success');
+        showAlert(`✓ Excel downloaded! ${sheetCount} sheets generated`, 'success');
     } catch (error) {
         console.error('Excel download error:', error);
         showAlert('Error downloading Excel file: ' + error.message, 'error');
     }
 }
 
-function generateConfigurationData() {
-    // Use real extracted records if available, otherwise empty array
-    const configRecords = sidebarState.extractedRecords || [];
+function generateConfigurationData(exportRecords = []) {
+    const configRecords = Array.isArray(exportRecords) ? exportRecords : [];
     return {
         total: configRecords.length,
         legalEntities: sidebarState.selectedLE.length,
@@ -1511,13 +1688,27 @@ function generateConfigurationData() {
     };
 }
 
-function generateCSV(data) {
-    let csv = 'Legal Entity,Module,Entity,Record ID,Name,Status,Created Date,Modified Date,Details\n';
+function generateCSV(data, exportRecords = []) {
+    let csv = '';
 
-    // Add configuration records - use the actual extracted records
-    if (sidebarState.extractedRecords && sidebarState.extractedRecords.length > 0) {
-        sidebarState.extractedRecords.forEach(record => {
-            csv += `"${escapeCSVValue(record.LegalEntity)}","${escapeCSVValue(record.Module)}","${escapeCSVValue(record.Entity)}","${escapeCSVValue(record.RecordID)}","${escapeCSVValue(record.Name)}","${escapeCSVValue(record.Status)}","${record.CreatedDate}","${record.ModifiedDate}","${escapeCSVValue(record.Details)}"\n`;
+    if (sidebarState.includeData) {
+        csv += 'Legal Entity,Module,Entity,Record ID,Name,Status,Created Date,Modified Date,Details\n';
+
+        // Add configuration records - use the actual extracted records
+        if (exportRecords && exportRecords.length > 0) {
+            exportRecords.forEach(record => {
+                csv += `"${escapeCSVValue(record.LegalEntity)}","${escapeCSVValue(record.Module)}","${escapeCSVValue(record.Entity)}","${escapeCSVValue(record.RecordID)}","${escapeCSVValue(record.Name)}","${escapeCSVValue(record.Status)}","${record.CreatedDate}","${record.ModifiedDate}","${escapeCSVValue(record.Details)}"\n`;
+            });
+        }
+    }
+
+    if (sidebarState.includeComparison) {
+        const comparison = data.comparison || buildComparisonSummary(exportRecords, sidebarState.selectedLE);
+        if (csv.length > 0) csv += '\n\n';
+        csv += 'COMPARISON\n';
+        csv += 'Module,Entity,Records,LEs With Data,Coverage\n';
+        comparison.rows.forEach(row => {
+            csv += `"${escapeCSVValue(row.module)}","${escapeCSVValue(row.entity)}","${row.recordCount}","${row.leCount}","${row.coverage}"\n`;
         });
     }
 
@@ -1525,11 +1716,15 @@ function generateCSV(data) {
     csv += '\n\n';
     csv += 'SUMMARY\n';
     csv += `Export Date,"${data.exportDate}"\n`;
-    csv += `Total Records,"${sidebarState.extractedRecords?.length || 0}"\n`;
+    csv += `Include Data,"${sidebarState.includeData ? 'Yes' : 'No'}"\n`;
+    csv += `Include Comparison,"${sidebarState.includeComparison ? 'Yes' : 'No'}"\n`;
+    csv += `Total Records,"${exportRecords?.length || 0}"\n`;
     csv += `Legal Entities,"${data.legalEntities.join(', ')}"\n`;
     csv += `Modules,"${data.modules.join(', ')}"\n`;
-    csv += `LE Count,"${data.configuration.legalEntities}"\n`;
-    csv += `Module Count,"${data.configuration.modules}"\n`;
+    if (data.configuration) {
+        csv += `LE Count,"${data.configuration.legalEntities}"\n`;
+        csv += `Module Count,"${data.configuration.modules}"\n`;
+    }
 
     return csv;
 }
@@ -1568,13 +1763,15 @@ function escapeCSVValue(value) {
     return str;
 }
 
-function generateTextReport(data) {
+function generateTextReport(data, exportRecords = []) {
     let text = '═══════════════════════════════════════════════════════════\n';
     text += '       D365 FINANCE CONFIGURATION EXPORT REPORT\n';
     text += '═══════════════════════════════════════════════════════════\n\n';
     text += `Export Date: ${data.exportDate}\n`;
     text += `Source: Dynamics 365 Finance\n`;
     text += `Exported by: D365 Finance Config Extractor v1.0.0\n\n`;
+    text += `Include Data: ${sidebarState.includeData ? 'Yes' : 'No'}\n`;
+    text += `Include Comparison: ${sidebarState.includeComparison ? 'Yes' : 'No'}\n\n`;
 
     text += 'LEGAL ENTITIES INCLUDED:\n';
     text += '─────────────────────────────────────────────────────────\n';
@@ -1588,33 +1785,47 @@ function generateTextReport(data) {
         text += `  • ${mod}\n`;
     });
 
-    text += '\nCONFIGURATION RECORDS:\n';
-    text += '─────────────────────────────────────────────────────────\n';
+    if (sidebarState.includeData) {
+        text += '\nCONFIGURATION RECORDS:\n';
+        text += '─────────────────────────────────────────────────────────\n';
 
-    if (data.configuration.records && data.configuration.records.length > 0) {
-        text += `Total Records: ${data.configuration.records.length}\n\n`;
+        if (data.configuration && data.configuration.records && data.configuration.records.length > 0) {
+            text += `Total Records: ${data.configuration.records.length}\n\n`;
 
-        // Group by LE and Module
-        const grouped = {};
-        data.configuration.records.forEach(record => {
-            const key = `${record.LegalEntity} > ${record.Module}`;
-            if (!grouped[key]) grouped[key] = [];
-            grouped[key].push(record);
-        });
-
-        Object.entries(grouped).forEach(([key, records]) => {
-            text += `\n${key} (${records.length} records):\n`;
-            records.forEach(record => {
-                text += `  • ${record.Name} [${record.RecordID}] - Status: ${record.Status}\n`;
+            // Group by LE and Module
+            const grouped = {};
+            data.configuration.records.forEach(record => {
+                const key = `${record.LegalEntity} > ${record.Module}`;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(record);
             });
+
+            Object.entries(grouped).forEach(([key, records]) => {
+                text += `\n${key} (${records.length} records):\n`;
+                records.forEach(record => {
+                    text += `  • ${record.Name} [${record.RecordID}] - Status: ${record.Status}\n`;
+                });
+            });
+        } else {
+            text += 'No configuration records available.\n';
+        }
+    }
+
+    if (sidebarState.includeComparison) {
+        const comparison = data.comparison || buildComparisonSummary(exportRecords, sidebarState.selectedLE);
+        text += '\n\nCOMPARISON OVERVIEW:\n';
+        text += '─────────────────────────────────────────────────────────\n';
+        text += `Entities Compared: ${comparison.totalEntities}\n`;
+        comparison.rows.forEach(row => {
+            text += `  • ${row.module} > ${row.entity}: ${row.coverage} (records: ${row.recordCount})\n`;
         });
     }
 
     text += '\n\nSUMMARY:\n';
     text += '─────────────────────────────────────────────────────────\n';
-    text += `Total Legal Entities: ${data.configuration.legalEntities}\n`;
-    text += `Total Modules: ${data.configuration.modules}\n`;
-    text += `Total Configuration Records: ${data.configuration.total}\n`;
+    text += `Total Legal Entities: ${sidebarState.selectedLE.length}\n`;
+    text += `Total Modules: ${sidebarState.selectedModules.length}\n`;
+    text += `Total Configuration Records: ${exportRecords.length}\n`;
     text += '\n═══════════════════════════════════════════════════════════\n';
     text += 'End of Report\n';
 

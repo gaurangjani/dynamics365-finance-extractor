@@ -307,10 +307,7 @@ async function exportData(format, data) {
             break;
 
         case 'xlsx':
-            // Excel export will be handled separately
-            fileName = `d365-config-export-${timestamp}.xlsx`;
-            fileType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-            break;
+            throw new Error('XLSX export is only supported in the sidebar flow. Please use the sidebar and select Excel format there.');
 
         default:
             throw new Error(`Unsupported format: ${format}`);
@@ -394,13 +391,35 @@ function convertToText(data) {
         text += `\n[${le}]\n`;
         text += '-'.repeat(50) + '\n\n';
 
-        for (const entity in data[le]) {
-            text += `Entity: ${entity}\n`;
-            if (data[le][entity] && data[le][entity].records) {
-                text += `Records: ${data[le][entity].records.length}\n\n`;
+        for (const moduleOrEntity in data[le]) {
+            const moduleData = data[le][moduleOrEntity];
 
-                for (const record of data[le][entity].records) {
-                    text += `  Record: ${record.id}\n`;
+            // Module-aware structure: LE -> Module -> Entity -> { records: [...] }
+            if (moduleData && typeof moduleData === 'object' && !Array.isArray(moduleData) && moduleData.records === undefined) {
+                text += `Module: ${moduleOrEntity}\n`;
+                for (const entity in moduleData) {
+                    const entityData = moduleData[entity];
+                    text += `  Entity: ${entity}\n`;
+                    if (entityData && entityData.records && Array.isArray(entityData.records)) {
+                        text += `  Records: ${entityData.records.length}\n\n`;
+                        for (const record of entityData.records) {
+                            text += `    Record: ${record.id || ''}\n`;
+                            for (const field in record) {
+                                if (field !== 'id') {
+                                    text += `      ${field}: ${record[field]}\n`;
+                                }
+                            }
+                            text += '\n';
+                        }
+                    }
+                }
+            } else if (moduleData && moduleData.records && Array.isArray(moduleData.records)) {
+                // Legacy direct entity structure
+                const entity = moduleOrEntity;
+                text += `Entity: ${entity}\n`;
+                text += `Records: ${moduleData.records.length}\n\n`;
+                for (const record of moduleData.records) {
+                    text += `  Record: ${record.id || ''}\n`;
                     for (const field in record) {
                         if (field !== 'id') {
                             text += `    ${field}: ${record[field]}\n`;

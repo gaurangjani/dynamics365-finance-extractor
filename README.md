@@ -6,6 +6,7 @@ A powerful Chrome/Edge browser extension for extracting and comparing Dynamics 3
 
 - **Multi-Legal Entity Support**: Extract configuration from 100+ legal entities simultaneously
 - **Multiple Export Formats**: Excel (.xlsx), CSV (.csv), JSON (.json), and Text (.txt)
+- **Selectable Output Content**: Choose Data only, Comparison only, or both before export
 - **Configuration Comparison**: Automatically identify differences between legal entity configurations
 - **Session-Based Authentication**: Works with your current D365F session (no additional credentials needed)
 - **Performance Optimized**: Handles large-scale extractions efficiently using IndexedDB
@@ -74,9 +75,11 @@ The extension can be packaged and distributed through:
 
 3. **Select Configuration**:
    - Choose legal entities (or use "Select All")
-   - Choose entity types to extract
-   - Select export formats (Excel, CSV, JSON, Text)
-   - Optional: Include comparison report
+   - Choose D365F modules to extract
+   - Select export format (Excel, CSV, JSON, Text)
+   - Choose output content:
+     - Include Data
+     - Include Comparison
 
 4. **Start Extraction**:
    - Click "Extract Configuration"
@@ -112,9 +115,12 @@ Dynamics365Finance/
 ├── manifest.json              # Extension configuration
 ├── src/
 │   ├── popup/
-│   │   ├── popup.html        # Extension UI
-│   │   ├── popup.css         # Styling
-│   │   └── popup.js          # UI logic
+│   │   ├── toggle.html       # Lightweight popup toggle UI
+│   │   └── toggle.js         # Popup toggle logic
+│   ├── sidebar/
+│   │   ├── sidebar.html      # Main extraction UI
+│   │   ├── sidebar.css       # Sidebar styling
+│   │   └── sidebar.js        # Extraction + export logic
 │   ├── background/
 │   │   └── background.js     # Service worker (extraction engine)
 │   ├── content/
@@ -122,9 +128,11 @@ Dynamics365Finance/
 │   ├── utils/
 │   │   ├── exporters.js      # Export format handlers
 │   │   ├── comparator.js     # Comparison engine
-│   │   └── storage.js        # Data persistence
+│   │   └── (helper utils)
 │   └── constants/
 │       └── entities.js       # D365F entity definitions
+│   └── lib/
+│       └── xlsx.full.min.js  # Excel generation library
 ├── icons/                     # Extension icons
 └── README.md
 ```
@@ -133,21 +141,23 @@ Dynamics365Finance/
 
 ### Component Overview:
 
-**Popup (popup.html/js)**
-- User interface for selecting entities and legal entities
-- Progress tracking display
-- Results download management
+Popup (toggle.html/js)
+- Opens/closes the injected sidebar on the active D365F tab
 
-**Content Script (content.js)**
+Sidebar (sidebar.html/js)
+- Primary extraction UI and workflow
+- Legal entity/module selection
+- Output selection (Include Data / Include Comparison)
+- Direct multi-format export generation
+
+Content Script (content.js)
 - Runs in D365F page context
-- Detects legal entities
-- Initiates data extraction requests
-- Accesses D365F OData APIs
+- Injects and toggles sidebar UI
 
-**Background Service Worker (background.js)**
+Background Service Worker (background.js)
 - Manages extraction sessions
 - Coordinates multi-LE extraction
-- Handles data export in all formats
+- Handles non-sidebar extraction/export flows
 - Manages file downloads
 - Uses IndexedDB for large datasets
 
@@ -286,6 +296,15 @@ Typical extraction times (on standard hardware):
 | 100 | 10 | 15-25 min |
 
 ## 🔄 Version History
+
+v1.1.0 (2026-06-09)
+- Sidebar-first workflow documented and aligned with current implementation
+- Added selectable export output controls:
+   - Include Data
+   - Include Comparison
+- Export generation now honors selected output options in XLSX/CSV/JSON/TXT
+- Fixed legal-entity normalization/filtering regression that could return 0 records
+- Added guard to prevent silent empty data exports
 
 **v1.0.0** (2026-06-01)
 - Initial release
