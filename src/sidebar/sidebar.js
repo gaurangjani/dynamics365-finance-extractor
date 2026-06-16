@@ -1341,6 +1341,23 @@ const ENTITY_ODATA_ALIASES = {
     // so no alias is needed for: ProjectCostTemplateLineCategories,
     // ProjExpenseCategoriesExport, ResourceCategoriesShared,
     // ProjectTransactionCategories, ValProjCategories, ResourceCategories.
+
+    // Project Management — "Project" prefix entities whose OData names use "Proj" prefix.
+    // buildEntityNameCandidates strips Customer/Vendor/Bank but not "Project", so
+    // each of these needs an explicit alias list with the canonical Proj-prefixed name first.
+    ProjectParameters:           ['ProjParameters'],
+    ProjectContractTypes:        ['ProjContractTypes', 'ProjContractType'],
+    ProjectCategories:           ['ProjProjectCategories', 'ProjCategories', 'ProjCategory'],
+    ProjectPostingProfiles:      ['ProjPostingProfiles', 'ProjPostProfiles', 'ProjPostingProfile'],
+    ProjectHourUtilizationSetup: ['ProjHourUtilizations', 'ProjHourUtilizationSetup', 'ProjectHourUtilizationSetups'],
+    ProjectResourceSetup:        ['ProjResourceSetups', 'ProjResourceSetup', 'ProjectResourceSetups'],
+    ProjectPeriodTypes:          ['ProjPeriodTypes', 'ProjPeriodType'],
+    ProjectWorkerCostPrice:      ['ProjectWorkerCostPrices', 'ProjWorkerCostPrices', 'ProjWorkerCostPrice'],
+    ProjectWorkerSalesPrice:     ['ProjectWorkerSalesPrices', 'ProjWorkerSalesPrices', 'ProjWorkerSalesPrice'],
+    ProjectFundingSourceGroups:  ['ProjFundingSourceGroups', 'ProjFundingSourceGroup'],
+    ProjectEstimateModels:       ['ProjEstimateModels', 'ProjEstimateModel'],
+    ProjectForecastModels:       ['ProjForecastModels', 'ProjForecastModel'],
+    ProjectCostTemplates:        ['ProjCostTemplates', 'ProjCostTemplate'],
 };
 
 async function getODataEntitySetIndex() {
@@ -1468,7 +1485,7 @@ function buildEntityNameCandidates(entityName) {
 
     // 6. Try stripping common module prefixes — many D365F OData entity sets use
     //    prefix-free names (e.g. CustomerInterestCodes → InterestCodes).
-    const MODULE_PREFIXES = ['Customer', 'Vendor', 'Bank', 'Purchase', 'Procurement', 'Sales'];
+    const MODULE_PREFIXES = ['Customer', 'Vendor', 'Bank', 'Purchase', 'Procurement', 'Sales', 'Project'];
     for (const prefix of MODULE_PREFIXES) {
         if (entityName.startsWith(prefix) && entityName.length > prefix.length) {
             addWithVariants(entityName.slice(prefix.length));
