@@ -719,6 +719,13 @@ async function extractRealConfigurationData() {
         'Project Management': [
             'ProjectParameters', 'ProjectGroups', 'ProjectContractTypes',
             'ProjectCategories', 'ProjCategoryGroup',
+            'ProjectCategoryEntity',
+            'ProjectCostTemplateLineCategories',
+            'ProjExpenseCategoriesExport',
+            'ResourceCategoriesShared',
+            'ProjectTransactionCategories',
+            'ValProjCategories',
+            'ResourceCategories',
             'ProjectPostingProfiles',
             'ProjLedgerPostingDefinitionEntity',
             'ProjectHourUtilizationSetup', 'ProjectResourceSetup',
@@ -1324,6 +1331,16 @@ const ENTITY_ODATA_ALIASES = {
     ConsolidationAccountGroups:        ['ConsolidateAccountGroups'],
     FixedAssetSpendLimits:             ['AssetSpendLimits'],
     FixedAssetBookTypeMappings:        ['AssetBookTypeMappings'],
+
+    // ── Project Management and Accounting ───────────────────────────────────────
+    // CategoryEntity — generic shared category table; OData name is just "Categories"
+    ProjectCategoryEntity:                  ['Categories'],
+    // ProjLedgerPostingDefinitionEntity — AOT name differs from OData collection name
+    ProjLedgerPostingDefinitionEntity:      ['ProjectLedgerPostingDefinitions'],
+    // The remaining entities use their OData public collection names directly,
+    // so no alias is needed for: ProjectCostTemplateLineCategories,
+    // ProjExpenseCategoriesExport, ResourceCategoriesShared,
+    // ProjectTransactionCategories, ValProjCategories, ResourceCategories.
 };
 
 async function getODataEntitySetIndex() {
