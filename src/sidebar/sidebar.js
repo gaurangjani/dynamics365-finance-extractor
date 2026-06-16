@@ -1934,6 +1934,23 @@ async function downloadExcelFile(data, exportRecords = []) {
             ? [['None', '', '']]
             : skippedEntities.slice(0, 50).map(s => [s.entity, s.module, s.reason]);
 
+        // Pre-extract entity rows so we can reference them for hyperlink injection
+        // after all entity sheet names have been finalised.
+        const entitySummaryRows = records.reduce((acc, r) => {
+            if (!acc.seen.has(r.Entity)) {
+                acc.seen.add(r.Entity);
+                const leCount = entityCoverage[r.Entity]?.size || 0;
+                const coverage = selectedLEs.length > 0
+                    ? `${leCount}/${selectedLEs.length}`
+                    : `${leCount}`;
+                acc.rows.push([r.Entity, r.Module, entityRecordCount[r.Entity] || 0, leCount, coverage]);
+            }
+            return acc;
+        }, { seen: new Set(), rows: [] }).rows;
+
+        // Maps entity name → final Excel sheet name; populated in the entity loop below.
+        const entitySheetNameMap = {};
+
         const summaryData = [
             [exportTitle],
             [],
@@ -1949,19 +1966,7 @@ async function downloadExcelFile(data, exportRecords = []) {
             ['Skipped Entities', skippedEntities.length],
             [],
             ['ENTITY', 'MODULE', 'RECORDS', 'LEs WITH DATA', 'COVERAGE'],
-            ...records.reduce((acc, r) => {
-                if (!acc.seen) acc.seen = new Set();
-                if (!acc.seen.has(r.Entity)) {
-                    acc.seen.add(r.Entity);
-                    const leCount = entityCoverage[r.Entity]?.size || 0;
-                    const coverage = selectedLEs.length > 0
-                        ? `${leCount}/${selectedLEs.length}`
-                        : `${leCount}`;
-                    // Use precomputed count — avoids O(n²) filter over 500k records
-                    acc.rows.push([r.Entity, r.Module, entityRecordCount[r.Entity] || 0, leCount, coverage]);
-                }
-                return acc;
-            }, { seen: new Set(), rows: [] }).rows,
+            ...entitySummaryRows,
             [],
             ['SKIPPED ENTITY', 'MODULE', 'REASON'],
             ...skippedLines,
@@ -2072,11 +2077,31 @@ async function downloadExcelFile(data, exportRecords = []) {
                 sheetName = `${entityName.substring(0, 28)}_${suffix++}`;
             }
             usedSheetNames.add(sheetName);
+            entitySheetNameMap[entityName] = sheetName;
+
+            // Prepend a "← Back to Summary" navigation link as the very first row.
+            // The hyperlink target is set on ws['A1'] after aoa_to_sheet below.
+            sheetData.unshift(['← Back to Summary'], []);
 
             const ws = XLSX.utils.aoa_to_sheet(sheetData);
+            if (ws['A1']) ws['A1'].l = { Target: '#Summary!A1' };
             ws['!cols'] = Array.from({ length: colCount }, (_, i) => ({ wch: i === 0 ? 35 : 20 }));
             XLSX.utils.book_append_sheet(wb, ws, sheetName);
         }
+
+        // ── Inject hyperlinks: Summary entity rows → individual entity sheets ──────
+        // Entity rows start at 0-based sheet row 14:
+        //   rows 0-12 = title, blank, 10 metadata rows, blank
+        //   row 13    = ['ENTITY','MODULE','RECORDS','LEs WITH DATA','COVERAGE'] header
+        //   row 14+   = one row per entity
+        const SUMMARY_ENTITY_ROW_START = 14;
+        entitySummaryRows.forEach((row, i) => {
+            const entName = row[0];
+            const mapped = entitySheetNameMap[entName];
+            if (!mapped) return;
+            const cellRef = XLSX.utils.encode_cell({ r: SUMMARY_ENTITY_ROW_START + i, c: 0 });
+            if (wsSummary[cellRef]) wsSummary[cellRef].l = { Target: `#'${mapped}'!A1` };
+        });
 
         if (Object.keys(byEntity).length === 0) {
             const ws = XLSX.utils.aoa_to_sheet([
