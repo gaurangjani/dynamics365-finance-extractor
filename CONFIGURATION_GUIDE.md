@@ -1,4 +1,5 @@
 # Configuration Master Data - Entity Guide
+**D365 Finance Configuration Extractor — v1.0.0**
 
 This guide explains the configuration master data entities available for extraction and how to add more.
 

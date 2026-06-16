@@ -1,5 +1,7 @@
 # D365 Finance Configuration Extractor
 
+**Version 1.0.0** — First public release
+
 A powerful Chrome/Edge browser extension for extracting and comparing Dynamics 365 Finance configuration data across multiple legal entities with multi-format export support.
 
 ## 🎯 Features
@@ -165,11 +167,11 @@ cd Dynamics365Finance
 
 6. The extension icon will appear in your toolbar
 
-### For Production:
+### From the Store (v1.0.0):
 
-The extension can be packaged and distributed through:
-- Chrome Web Store
-- Microsoft Edge Add-ons Store
+The extension is available on:
+- [Chrome Web Store](https://chrome.google.com/webstore) — search "D365 Finance Configuration Extractor"
+- [Microsoft Edge Add-ons](https://microsoftedge.microsoft.com/addons) — search "D365 Finance Configuration Extractor"
 - Internal enterprise deployment via Group Policy
 
 ## 💻 Usage
@@ -420,19 +422,18 @@ Typical extraction times (on standard hardware):
 - Some DMF target entities might not be exposed as OData collections in every environment/version.
 - Legal entity discovery requests use `$top=1000`, so very large environments may need pagination hardening.
 
-## 🔄 Version Status
+## 🔄 Version History
 
-This project is currently in pre-release and has not been officially released yet.
-
-### Unreleased (working draft)
+### v1.0.0 — June 2026 (First Release)
 - Sidebar-first extraction workflow
 - Multi-format export support (XLSX/CSV/JSON/TXT)
 - Configurable output (Data and/or Comparison)
-- Expanded module/entity coverage across 16 modules
-- Summary output enhancements:
-   - Skipped entities list
-   - Excel Copilot reconciliation prompt
-- Performance/reliability notes and operational limits documented
+- 285 entities across 16 D365F modules
+- Summary output with skipped entities list
+- Excel Copilot reconciliation prompt embedded in exports
+- Session-based authentication (no credentials stored)
+- IndexedDB-backed performance for large-scale extractions
+- Endpoint auto-validation against live OData service document
 
 ## 📝 License
 

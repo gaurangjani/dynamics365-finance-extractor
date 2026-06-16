@@ -1,4 +1,5 @@
 # Quick Reference: Configuration Master Data Entities
+**D365 Finance Configuration Extractor — v1.0.0**
 
 ## Most Frequently Extracted Entities
 
