@@ -4,56 +4,53 @@
 
 ### Tax Configuration (Primary Use Case)
 ✅ **Always extracted in Tax module:**
-- SalesTaxCodes
-- SalesTaxGroups
-- ItemSalesTaxGroups
+- TaxCodes (OData name — not SalesTaxCodes)
+- TaxGroups (OData name — not SalesTaxGroups)
+- TaxItemGroups (OData name — not ItemSalesTaxGroups)
 - TaxExemptCodes
 - WithholdingTaxCodes
-- WithholdingTaxGroups
+- WithholdingGroups
 - TaxParameters
 - TaxAuthorities
-- **New:** TaxComponentsTable, TaxJurisdictions, TaxIntervals
+- TaxPeriodHeads / TaxPeriods
+- IntrastatCommodityCodes, IntrastatTransactionCodes
 
 ### Payment Schedule & Terms
 ✅ **Always extracted in AR/AP modules:**
-- CustomerPaymentSchedules / VendorPaymentSchedules
-- CustomerPaymentScheduleLines / VendorPaymentScheduleLines
-- PaymentTerms
-- PaymentDays / PaymentDayLines
+- PaymentSchedules / PaymentScheduleLines (shared AR+AP entities)
+- PaymentDays / PaymentDayLinesCds
 - CashDiscounts
 - CustomerPaymentMethods / VendorPaymentMethods
 
 ### Posting Profiles (Critical for AR/AP/Inventory)
 ✅ **Module-specific:**
 - AR: CustomerPostingProfiles, CustomerPostingProfileLines
-- AP: VendorPostingProfiles, VendorPostingProfileLines
+- AP: PostingProfileHeaders, PostingProfileLines (OData names — not VendorPostingProfiles)
 - Inventory: InventPostingProfiles, InventInventoryProfileCustomerVendorLedgerEntity
-- Fixed Assets: FixedAssetPostingProfiles, FixedAssetPostingProfileLines, AssetPostingProfileEntity, AssetPostingProfileDisposalEntity
-- Projects: ProjectPostingProfiles, ProjPostingProfileLines, ProjLedgerPostingDefinitionEntity
+- Fixed Assets: FixedAssetPostingProfiles, FixedAssetPostingProfileDisposals
+- Projects: ProjectPostingProfiles, ProjLedgerPostingDefinitionEntity
 
 ### Ledger & Chart of Accounts
 ✅ **GL Module:**
 - MainAccounts (all GL accounts)
 - MainAccountCategories
-- LedgerChartOfAccounts
-- DimensionAttributes (financial dimensions)
-- DimensionHierarchies
-- LedgerParameters / GeneralLedgerParameters
+- ChartOfAccounts
+- Ledgers / JournalNames / AccountStructures
+- AllocationRules / AllocationRuleSources / AllocationRuleDestinations
+- FiscalPeriods / FiscalCalendarsEntity
 
 ### Bank & Cash Management
 ✅ **Bank Module:**
 - BankAccounts
 - BankParameters
-- BankStatementFormats
-- BankChequeLayouts
-- BankReconciliationMatchRules
+- BankCheckLayouts (OData name — not BankChequeLayouts)
+- ReconciliationMatchRuleSets (OData name — not BankReconciliationMatchRules)
+- BankTransactionTypes / BankTransactionGroups
 
 ### Vendor & Customer Groups
 ✅ **AR/AP Modules:**
 - CustomerGroups / VendorGroups
-- CustomerPostingProfiles / VendorPostingProfiles
-- CustomerCharges / VendorCharges
-- VendorCategories
+- CustomerPostingProfiles / PostingProfileHeaders (AP vendor posting profiles)
 - TradeAgreementJournalNames
 
 ### Inventory Setup
@@ -76,24 +73,24 @@
 
 | Module | Entities | Primary Use |
 |--------|----------|-------------|
-| General Ledger | 59 | Chart of accounts, dimensions, intercompany |
-| Accounts Receivable | 53 | AR posting profiles, payment terms, customer groups |
-| Accounts Payable | 52 | AP posting profiles, payment terms, vendor groups |
-| Cash & Bank Management | 40 | Bank accounts, reconciliation, cheques |
-| Fixed Assets | 42 | Asset groups, depreciation, posting profiles |
-| Tax | 23 | Tax codes, groups, authorities, jurisdictions |
-| Consolidation | 24 | Consolidation setup, elimination rules |
-| Project Management | 17 | Project groups, categories, billing |
-| Human Resources | 18 | HR setup, benefits, compensation |
-| Inventory Management | 27 | Item groups, warehouse, posting setup |
-| Cost Accounting | 16 | Cost centers, allocation, rates |
-| Manufacturing | 14 | Production, BOM, route setup |
-| Procurement | 16 | Sourcing, RFQ/requisition, category governance |
-| Sales | 18 | Sales pools, statistics, commissions |
+| General Ledger | 27 | Chart of accounts, journals, intercompany |
+| Accounts Receivable | 38 | AR posting profiles, payment terms, collections |
+| Accounts Payable | 18 | AP posting profiles, payment terms, vendor setup |
+| Cash & Bank Management | 19 | Bank accounts, reconciliation, cheques |
+| Fixed Assets | 22 | Asset groups, depreciation, posting profiles |
+| Tax | 26 | Tax codes, groups, authorities, withholding, Intrastat |
+| Consolidation | 3 | Consolidation account groups, elimination rules |
+| Project Management | 16 | Project groups, categories, billing, cost templates |
+| Human Resources | 15 | HR setup, benefits, compensation |
+| Inventory Management | 24 | Item groups, warehouse, posting setup, quality |
+| Cost Accounting | 15 | Cost centers, allocation, rates |
+| Manufacturing | 9 | Production, BOM, route setup |
+| Procurement | 9 | Vendor groups, categories, tolerances |
+| Sales | 10 | Sales pools, carriers, discount groups |
 | Organization Admin | 16 | Company, departments, number sequences |
-| Budget | 14 | Budget models, control rules, planning |
+| Budget | 18 | Budget models, control rules, planning |
 
-**Total configured extraction list: 449 entities across 16 modules**
+**Total configured extraction list: 285 entities across 16 modules**
 
 ## How to Extract Specific Entities
 
@@ -233,6 +230,7 @@
 - **Network:** Requires stable internet connection throughout extraction
 - **Browser:** Chrome or Edge recommended
 - **Memory:** Works efficiently with 1GB+ available RAM
+- **Large exports:** Each entity sheet in the Excel output is capped at **50,000 rows** to prevent browser stack overflow. A `⚠` warning appears at the top of any capped sheet. For very large entities, export that module alone or use CSV format instead.
 
 ## Endpoint Validation Notes
 

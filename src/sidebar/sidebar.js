@@ -59,22 +59,22 @@ console.log('Use window.D365ConfigDebug for debugging');
 
 // Module definitions
 const D365F_MODULES = {
-    'General Ledger': { color: '#0078D4', count: 59 },
-    'Accounts Receivable': { color: '#7FBA00', count: 53 },
-    'Accounts Payable': { color: '#FFB900', count: 52 },
-    'Cash & Bank Management': { color: '#1ABC9C', count: 40 },
-    'Fixed Assets': { color: '#9B59B6', count: 42 },
-    'Consolidation': { color: '#2C3E50', count: 24 },
-    'Inventory Management': { color: '#00D4FF', count: 27 },
-    'Project Management': { color: '#6C63FF', count: 17 },
-    'Manufacturing': { color: '#E74C3C', count: 14 },
-    'Human Resources': { color: '#F39C12', count: 18 },
-    'Procurement': { color: '#34495E', count: 16 },
-    'Sales': { color: '#C0392B', count: 18 },
+    'General Ledger': { color: '#0078D4', count: 27 },
+    'Accounts Receivable': { color: '#7FBA00', count: 38 },
+    'Accounts Payable': { color: '#FFB900', count: 18 },
+    'Cash & Bank Management': { color: '#1ABC9C', count: 19 },
+    'Fixed Assets': { color: '#9B59B6', count: 22 },
+    'Consolidation': { color: '#2C3E50', count: 3 },
+    'Inventory Management': { color: '#00D4FF', count: 24 },
+    'Project Management': { color: '#6C63FF', count: 16 },
+    'Manufacturing': { color: '#E74C3C', count: 9 },
+    'Human Resources': { color: '#F39C12', count: 15 },
+    'Procurement': { color: '#34495E', count: 9 },
+    'Sales': { color: '#C0392B', count: 10 },
     'Organization Admin': { color: '#8E44AD', count: 16 },
-    'Tax': { color: '#E67E22', count: 23 },
-    'Budget': { color: '#27AE60', count: 14 },
-    'Cost Accounting': { color: '#1F77B4', count: 16 }
+    'Tax': { color: '#E67E22', count: 26 },
+    'Budget': { color: '#27AE60', count: 18 },
+    'Cost Accounting': { color: '#1F77B4', count: 15 }
 };
 
 // Initialize sidebar immediately (DOMContentLoaded may have already fired)
@@ -632,299 +632,166 @@ async function extractRealConfigurationData() {
     // ProjectCostSalesPrices    — pricing master data
     // HumanResourcePositions    — position master data
     // All transactional entities (journals, invoices, POs, SOs, timesheets, etc.)
-    // Duplicates removed: CashDiscounts/PaymentTerms/PaymentDays/PaymentDayLines kept
-    //   only in AR; TaxLedgerAccountGroups kept only in GL; LedgerConsolidateAccountGroups
-    //   & MainAccountConsolidateAccounts kept only in GL; CurrencyRevaluationAccounts kept
-    //   only in Bank; TradeAgreementJournalNames kept only in AR.
+    // Duplicates removed where possible; some shared entities are intentionally exposed
+    // in multiple UI modules when they are functionally relevant there.
     const moduleODataMap = {
-        // ─── GENERAL LEDGER ──────────────────────────────────────────────────────
         'General Ledger': [
-            // Chart of Accounts & Main Accounts
-            'MainAccounts', 'MainAccountCategories', 'LedgerChartOfAccounts',
-            'LedgerChartOfAccountsTranslations', 'MainAccountLegalEntityOverrides',
-            'MainAccountConsolidateAccounts', 'LedgerConsolidateAccountGroups',
-            // Ledger setup
-            'Ledgers', 'LedgerParameters', 'GeneralLedgerParameters',
-            // Allocation rules
-            'LedgerAllocationRules', 'LedgerAllocationBases', 'LedgerAllocationBasisRules',
-            'LedgerAllocationRuleDestinations', 'LedgerAllocationRuleSources',
-            'LedgerPeriodAllocationCategories', 'LedgerPeriodAllocationCategoryLines',
-            // Journal names (setup only, not transactions)
-            'LedgerJournalNames',
-            // Financial dimensions (structure only — values excluded for performance)
-            'DimensionAttributes', 'DimensionAttributeLegalEntityOverrides',
-            'DimensionHierarchies', 'DimensionHierarchyNodes', 'DimensionHierarchyLevel',
-            'DimensionSets', 'DimensionSetLines', 'FinancialDimensionDefaultTemplates',
-            // Currencies & exchange rate types (rates themselves excluded — too large)
-            'Currencies', 'ExchangeRateTypes', 'CurrencyTranslations',
-            // Posting definition entities (as shown in Data Management target entities)
-            'LedgerExchAdjPostingEntity', 'LedgerPostingJournalEntity',
-            'JournalizingTransactionPostingDefinitionEntity',
-            // Fiscal calendars & periods
-            'FiscalCalendars', 'FiscalCalendarYears', 'FiscalCalendarPeriods',
-            'AccountingPeriods', 'PeriodTypes',
-            // Intercompany & settlement setup
-            'LedgerIntercompanyAccounts', 'LedgerIntercompanyPosting',
-            'LedgerSettleAccountPairs', 'LedgerAccountAlias', 'LedgerAccountAliasLines',
-            // Account structures & advanced rules
-            'LedgerAccountStructures', 'LedgerAccountStructureRules',
-            'LedgerAdvancedRuleStructures', 'LedgerAdvancedRuleStructureRules',
-            // Closing & year-end setup
-            'LedgerClosingRoundDifferenceAccounts', 'LedgerYearEndParameters',
-            // Accrual setup
-            'LedgerAccrualTable',
-            // Reporting tree and account category setup
-            'FinancialTagCategories', 'FinancialTags',
-            // Reversal and correction setup
-            'GeneralLedgerReasonCodeMappings',
-            // Reason codes
-            'ReasonCodes', 'ReasonCodeDescriptions',
-            // Posting setup
-            'LedgerPosting', 'TaxLedgerAccountGroups', 'CashFlowForecastLedgerAccounts',
-            // Journal workflow/setup policies
-            'LedgerJournalWorkflowConfigurations'
-        ],
-
-        // ─── ACCOUNTS RECEIVABLE ─────────────────────────────────────────────────
-        'Accounts Receivable': [
-            // Customer groups & setup (Customers master excluded — too large)
-            'CustomerGroups', 'CustomerPostingProfiles', 'CustomerPostingProfileLines', 'CustomerParameters',
-            // Payment setup
-            'CustomerPaymentMethods', 'CustomerPaymentMethodSpecifications',
-            'CustomerPaymentSchedules', 'CustomerPaymentScheduleLines',
-            'CashDiscounts', 'PaymentTerms', 'PaymentDays', 'PaymentDayLines',
-            // Collections setup
-            'CustomerCollectionLetterCodes', 'CustomerCollectionLetterIntervals',
-            // Interest setup
-            'CustomerInterestCodes', 'CustomerInterestCodeLines',
-            // Write-off setup (CustomerCreditLimits excluded — per-customer data)
-            'CustomerWriteOffCodes', 'CustomerWriteOffReasonCodeGroups',
-            // Charges setup
-            'CustomerCharges', 'CustomerChargeGroupHeaders', 'CustomerChargeGroupLines',
-            // Agreement & trade setup
-            'SalesAgreementClassifications', 'TradeAgreementJournalNames',
-            // Statistics & reporting setup
-            'CustomerStatisticsGroups', 'CustomerStatisticsPeriods',
-            // Journal names setup
-            'CustomerJournalNames',
-            // Additional customer setup
-            'CustomerRebatePrograms', 'CustomerRebateProgramLines'
-        ],
-
-        // ─── ACCOUNTS PAYABLE ────────────────────────────────────────────────────
-        'Accounts Payable': [
-            // Vendor groups & setup (Vendors master excluded — too large)
-            'VendorGroups', 'VendorPostingProfiles', 'VendorPostingProfileLines', 'VendorParameters',
-            'VendorCertificateTypes', 'VendorCategories', 'VendorDefaultOffsetAccounts',
-            // Payment setup (CashDiscounts/PaymentTerms/PaymentDays already in AR — not duplicated)
-            'VendorPaymentMethods', 'VendorPaymentMethodSpecifications',
-            'VendorPaymentSchedules', 'VendorPaymentScheduleLines',
-            // Invoice matching setup
-            'VendorInvoiceMatchingPolicies', 'VendorInvoiceMatchingPolicyDetails',
-            // Charges setup
-            'VendorCharges', 'VendorChargeGroupHeaders', 'VendorChargeGroupLines',
-            // Journal names setup
-            'VendorJournalNames',
-            // Positive pay format setup
-            'VendorPositivePayFormats',
-            // Procurement policies setup
-            'PurchasePolicies', 'PurchaseSetup',
-            // Procurement categories setup
-            'ProcurementCategories', 'VendorProcurementCategories',
-            // Additional vendor setup
-            'VendorInvoiceDeclarationTypes', 'VendorInvoiceDeclarationTypeLines',
-            'VendorPostingProfileGroups'
-        ],
-
-        // ─── CASH & BANK MANAGEMENT ──────────────────────────────────────────────
-        'Cash & Bank Management': [
-            // Bank account setup
-            'BankAccounts', 'BankAccountTypes', 'BankAccountTransactionTypes', 'BankParameters',
-            // Statement format setup
-            'BankStatementFormats', 'AdvancedBankReconciliationImportFormats',
-            // Cheque layout setup
-            'BankChequeLayouts', 'BankNegativePaymentFormats', 'BankChequePaymentControls',
-            // Reconciliation rules setup
-            'BankReconciliationMatchRules', 'BankReconciliationMatchRuleSets',
-            'BankReconciliationReasonCodes',
-            // Invoice matching rules setup
-            'BankInvoiceMatchingRules', 'BankInvoiceMatchingRuleDetails',
-            // CODA transaction code setup
-            'BankCodaTransactionCodes', 'BankCodaGroups', 'BankCodaGroupLines',
-            // Facility & bridging setup
-            'BankFacilityAgreements', 'BridgingAccounts', 'BankFacilityAgreementLines',
-            // Cash flow forecast setup
-            'CashFlowForecastAccounts', 'CashFlowForecastLedgerDimensions',
-            // Currency revaluation setup
-            'CurrencyRevaluationAccounts',
-            // Bank transaction types setup
-            'BankTransactionTypes', 'BankAccountReconciliationProfiles'
-        ],
-
-        // ─── FIXED ASSETS ────────────────────────────────────────────────────────
-        'Fixed Assets': [
-            // Asset groups & parameters (setup)
-            'FixedAssetGroups', 'FixedAssetParameters', 'FixedAssetGroupParameters',
-            // Books & depreciation setup
-            'FixedAssetBooks', 'FixedAssetGroupBooks', 'FixedAssetBookSetups',
-            'FixedAssetValueModelSetups', 'FixedAssetDepreciationProfiles',
-            'AssetGroupBonus', 'AssetGroupBonusBook', 'AssetBookReduction',
-            // Posting profiles setup
-            'FixedAssetPostingProfiles', 'FixedAssetPostingProfileLines',
-            // Microsoft Learn (CDM) documented posting profile entities
-            'AssetPostingProfileEntity', 'AssetPostingProfileDisposalEntity',
-            // Insurance setup
-            'FixedAssetInsuranceTypes', 'FixedAssetInsurancePolicies',
-            // Component & classification setup
-            'FixedAssetComponents', 'FixedAssetComponentGroups',
-            'FixedAssetManufacturerModelNumbers', 'FixedAssetConditionCodes', 'FixedAssetBarCodeSetups',
-            // Disposal & acquisition setup
-            'FixedAssetDisposalParameters', 'FixedAssetAcquisitionMethods',
-            // Spend limit setup
-            'FixedAssetSpendLimits', 'FixedAssetBookTypeMappings'
-        ],
-
-        // ─── CONSOLIDATION ───────────────────────────────────────────────────────
-        'Consolidation': [
-            // Consolidation setup (account mapping already in GL — not duplicated here)
-            'ConsolidationAccountGroups', 'LedgerConsolidateParameters',
-            // Elimination rules setup
+            'MainAccounts', 'MainAccountCategories', 'ChartOfAccounts', 'Ledgers',
+            'JournalNames', 'AccountStructures', 'LedgerAdvancedRuleStructures',
             'LedgerEliminationRules', 'LedgerEliminationRuleLines',
-            // Currency translation setup (CurrencyRevaluationAccounts already in Bank)
-            'ConsolidationCurrencyTranslationAccounts',
-            // Financial reporting (Management Reporter) setup
-            'FinancialReportingParameters', 'FinancialReportDefinitions',
-            'FinancialReportRows', 'FinancialReportColumns', 'FinancialReportTrees',
-            // Consolidation translation setup
-            'ConsolidationExchangeRateTypes', 'ConsolidationDimensionMappings',
-            'ConsolidationEliminationGroups'
+            'LedgerInterCompanyAccounts', 'LedgerAutomaticTransactionAccounts',
+            'LedgerFinancialReasons', 'AllocationRules', 'AllocationRuleSources',
+            'AllocationRuleDestinations', 'FiscalPeriods', 'FiscalCalendarsEntity',
+            'FiscalCalendarYears', 'PostingDefinitions', 'PostingDefinitionEntries',
+            'ConsolidateAccountGroups', 'JournalControls', 'AccrualSchemes',
+            'BalanceControls', 'DimensionRuleGoups', 'Currencies', 'ExchangeRateTypes'
+        ],
+
+        'Accounts Receivable': [
+            'AgingPeriodDefinitions', 'CashDiscounts', 'PaymentTerms', 'PaymentDays',
+            'PaymentDayLinesCds', 'PaymentSchedules', 'PaymentScheduleLines',
+            'DeliveryTerms', 'DeliveryModesV2', 'FormatCodes', 'DueDateLimits',
+            'PaymentCalendars', 'PaymentCalendarRules', 'PaymentCalendarExceptions',
+            'PaymentInstructions', 'ChargesTolerances', 'ElectronicPaymentTypes',
+            'ElectronicPaymentWays', 'ElectronicPaymentSegments',
+            'CustomerGroups', 'CustomerPostingProfiles', 'CustomerPostingProfileLines',
+            'CustomerParameters', 'CustomerPaymentMethods',
+            'CustomerPaymentMethodSpecifications', 'CustomerStatisticsGroups',
+            'CustomerPaymentFees', 'CustomerPaymentFineCodes',
+            'CustomerCollectionLetterCodes', 'CreditManagementGroups',
+            'CreditManagementParameters', 'CreditLimitRules', 'CreditLimitRuleLines',
+            'DirectDebitMandates', 'CustomerWriteOffCodes', 'CustomerInterestCodes',
+            'CustomerInterestCodeLines', 'CustomerJournalNames'
+        ],
+
+        'Accounts Payable': [
+            'VendorParameters', 'VendorPaymentMethods',
+            'VendorPaymentMethodSpecifications', 'PostingProfileHeaders',
+            'PostingProfileLines', 'VendorFormSetups', 'VendorPaymentFees',
+            'VendorPaymentFineCodes', 'VendorPaymentInterestCodes',
+            'VendorExceptionGroups', 'VendorPriceToleranceGroups',
+            'VendInvoicePolicyRuleTypes', 'CustomChequeLayouts',
+            'VendorPaymFeeGroups', 'VendPaymModeBankAccounts',
+            'BankPaymentTransactionCodes', 'Tax1099Fields', 'VendorJournalNames'
+        ],
+
+        'Cash & Bank Management': [
+            'BankAccounts', 'BankParameters', 'BankGroups', 'BankTransactionTypes',
+            'BankTransactionGroups', 'BankCheckLayouts',
+            'BankBillOfExchangeLayouts', 'BankPromissoryNoteLayouts',
+            'BankPaymentIds', 'BankAccountTraps', 'ReconciliationMatchRuleSets',
+            'BankClientDocumentTypes', 'CashAccounts', 'CashLedgers',
+            'ImportModes', 'PaymentPurposeCodes', 'PaymFeeBankRules',
+            'DocumentFacilityGroups', 'DocumentFacilityTypes'
+        ],
+
+        'Fixed Assets': [
+            'FixedAssetGroups', 'AssetParameters', 'DepreciationProfiles',
+            'ValueModelSetups', 'FixedAssetPostingProfiles',
+            'FixedAssetPostingProfileDisposals', 'AcquisitionMethods',
+            'FixedAssetBooksV2', 'FixedAssetGroupValueModelSetups',
+            'AcceleratedDepreciationGroups', 'AssetActivityCodes',
+            'AssetConditions', 'AssetLocations', 'AssetMajorTypes',
+            'DepreciationGroups', 'AssetConsumptionUnits',
+            'InventoryFixedAssetTransferJournalNames', 'ReductionEntryProfiles',
+            'RevaluationGroups', 'DiscountRates', 'AssetStatementRows',
+            'AssetAllocationRules'
+        ],
+
+        'Consolidation': [
+            'ConsolidationAccountGroups',
+            'LedgerEliminationRules', 'LedgerEliminationRuleLines'
         ],
 
         // ─── REMAINING MODULES ────────────────────────────────────────────────────
         'Inventory Management': [
-            // WarehouseLocations excluded — operational master, can be very large
             'ItemGroups', 'InventoryParameters', 'InventoryModelGroups', 'InventoryModelGroupPolicies',
             'InventoryDimensionGroups', 'InventoryStorageDimensionGroups',
             'InventoryTrackingDimensionGroups', 'Warehouses',
             'InventoryPostingSetup', 'InventPostingProfiles', 'ItemSetupSupplyTypes',
-            // Microsoft Learn (CDM) documented inventory posting profile entity
-            'InventInventoryProfileCustomerVendorLedgerEntity',
-            // Inventory posting definition entities (as shown in Data Management target entities)
-            'InventLedgerPostingDefinitionCombinationEntity',
             'InventInventoryLedgerPostingDefinitionEntity',
-            'InventProcurementLedgerPostingDefinitionEntity',
-            'InventProductionLedgerPostingDefinitionEntity',
-            'InventSalesLedgerPostingDefinitionEntity',
-            'InventStandardCostVarianceLedgerPostingDefinitionEntity',
+            'InventInventoryProfileCustomerVendorLedgerEntity',
             'InventoryReservationHierarchies', 'InventoryOwnerGroups',
-            // Quality setup
             'InventTestGroups', 'InventTestGroupMembers', 'InventQualityGroups',
             'InventItemQualityGroups', 'InventTestInstruments', 'InventTestVariables',
-            // Inventory control setup
             'InventCountingGroups', 'InventBlockingReasons', 'InventTransferParameters'
         ],
         'Project Management': [
-            // Parameters & groups
             'ProjectParameters', 'ProjectGroups', 'ProjectContractTypes',
-            // Categories & category groups
             'ProjectCategories', 'ProjCategoryGroup',
-            // Posting profiles (header + lines)
-            'ProjectPostingProfiles', 'ProjPostingProfileLines',
-            // Microsoft Learn (CDM) documented project posting setup entity
+            'ProjectPostingProfiles',
             'ProjLedgerPostingDefinitionEntity',
-            // Resource & utilization setup
             'ProjectHourUtilizationSetup', 'ProjectResourceSetup',
-            // Billing & pricing setup (billing rules are config templates, not transactions)
-            'ProjectBillingRules', 'ProjectPeriodTypes',
-            // Worker cost price setup
+            'ProjectPeriodTypes',
             'ProjectWorkerCostPrice', 'ProjectWorkerSalesPrice',
-            // Funding and estimation setup
             'ProjectFundingSourceGroups', 'ProjectEstimateModels',
-            'ProjectForecastModels', 'ProjectInvoiceProposalParameters'
+            'ProjectForecastModels', 'ProjectCostTemplates'
         ],
         'Manufacturing': [
             'ProductionParameters', 'BOMParameters', 'RouteGroups', 'RouteCostCategories',
             'ProductionPoolGroups', 'ProductionFlushingPrinciples',
-            'BOMCalculationGroups', 'ProductionGroups', 'ProductionUnits',
-            'KanbanRules', 'KanbanEventRules'
+            'BOMCalculationGroups', 'ProductionGroups', 'ProductionUnits'
         ],
         'Human Resources': [
-            // HumanResourcePositions excluded — position master data, can be large
             'HumanResourceParameters', 'HumanResourceJobs',
             'HumanResourceJobFunctions', 'HumanResourceDepartments',
-            'PayrollParameters', 'BenefitTypes', 'BenefitPlans',
-            // Compensation structure setup
+            'BenefitTypes', 'BenefitPlans',
             'CompensationPlans', 'CompensationLevels', 'CompensationGrids',
             'CompensationPayFrequency', 'CompensationStructure',
-            // Additional HR setup
             'PositionTypes', 'PositionHierarchyTypes', 'JobTaskAreas',
             'BenefitEligibilityRules'
         ],
         'Sales': [
-            // TradeAgreementJournalNames already in AR — not duplicated here
-            'SalesParameters', 'SalesPools',
-            'SalesStatisticsGroups', 'CommissionSalesGroups', 'CommissionCustomerGroups',
-            // Sales setup
-            'SalesOrderPools', 'SalesReasonCodes', 'SalesCategoryHierarchies',
-            'SalesDiscountCodes', 'SalesCommissionCalculationGroups'
+            'TradeAgreementJournalNames', 'SalesOrderPools', 'SalesOrderHoldCodes',
+            'ReturnDispositionCodes', 'SalesCarriers', 'CustomerChargeGroup',
+            'LineDiscountCustomerGroups', 'MultilineDiscountCustomerGroups',
+            'TotalDiscountCustomerGroups', 'SalesContactPersonTitles'
         ],
         'Procurement': [
-            // Purchasing and sourcing setup
-            'PurchasePolicies', 'PurchaseSetup', 'ProcurementCategories',
-            'ProcurementCategoryHierarchies', 'ProcurementCategoryAccessPolicies',
-            // Vendor sourcing and approval setup
-            'VendorProcurementCategories', 'VendorEvaluationCriteria',
-            'VendorEvaluationCriterionGroups', 'VendorEvaluationScoringModels',
-            // Requisition and RFQ setup
-            'PurchaseRequisitionParameters', 'RequestForQuotationParameters',
-            'PurchaseAgreementClassifications'
+            'VendorGroups', 'ProcurementProductCategories',
+            'VendVendorCertificationTypeEntities', 'VendorReasons',
+            'PriceTolerances', 'VendorInvoiceTotalTolerances',
+            'LineDiscountVendorGroups', 'MultilineDiscountVendorGroups',
+            'TotalDiscountVendorGroups'
         ],
         'Organization Admin': [
             'CompanyInfo', 'NumberSequenceGroups', 'OperatingUnits',
             'OrganizationHierarchyTypes', 'OrganizationHierarchyPurposes',
             'Departments', 'Divisions', 'Teams',
-            // Number sequence formats and assignments
             'NumberSequenceCodes', 'NumberSequenceReferences',
             'NumberSequenceGroupReferences',
-            // Regional and address setup
             'AddressBooks', 'AddressBookParameters', 'CountryRegions',
             'LanguageTexts', 'TimeZones'
         ],
         'Tax': [
-            // TaxLedgerAccountGroups already in GL — not duplicated here
-            // Core tax setup
-            'TaxParameters', 'SalesTaxCodes', 'SalesTaxGroups', 'ItemSalesTaxGroups',
-            'TaxExemptCodes', 'TaxAuthorities',
-            'TaxSettlementPeriods', 'TaxRegistrationTypes', 'WithholdingTaxCodes',
-            'WithholdingTaxGroups', 'TaxReportingCodes', 'TaxFreeAccounts',
-            // Tax components & mapping
-            'TaxComponentsTable', 'TaxExemptCodeGroupHeaders',
-            'TaxTable', 'TaxIntrastatCommodityCodes', 'TaxTransactionCodeMapping',
-            // Tax interval & jurisdiction setup
-            'TaxIntervals', 'TaxJurisdictions', 'TaxJurisdictionGroups',
-            // Tax exempt group members
-            'TaxExemptCodeGroupMembers'
+            'TaxParameters', 'TaxCodes', 'TaxGroups', 'TaxItemGroups',
+            'TaxExemptCodes', 'TaxAuthorities', 'TaxPeriodHeads', 'TaxPeriods',
+            'WithholdingTaxCodes', 'WithholdingGroups', 'WithholdingPeriods',
+            'TaxReportingCodeEntities', 'TaxRegistrationGroups',
+            'TaxPostingGroups', 'IntrastatCommodityCodes',
+            'IntrastatTransactionCodes', 'IntrastatCodes', 'IntrastatPorts',
+            'RegistrationTypes', 'TaxGroupDatas', 'TaxItemGroupHeadings',
+            'WithholdCertificates', 'WithholdAuthorities',
+            'WithholdComponentGroups', 'WithholdComponents', 'WithholdItemGroups'
         ],
         'Cost Accounting': [
-            // Cost accounting ledger & parameters
             'CostAccountingLedger', 'CostAccountingParameters',
-            // Cost elements (maps to GL main accounts)
             'CostElements', 'CostElementDimensions',
-            // Cost centers & allocation
             'CostCenters', 'CostAllocationBases', 'CostAllocationRules',
             'CostAllocationPolicies', 'CostDistributionPolicies',
-            // Cost rate setup
             'CostAccountingOverheadRates', 'CostAccountingCostGroups',
-            // Cost object and behavior setup
             'CostObjects', 'CostBehaviors', 'CostControlUnits',
             'CostAccountingDimensions'
         ],
         'Budget': [
-            'BudgetParameters', 'BudgetModels', 'BudgetCycleTimeSpans',
-            'BudgetControlConfiguration', 'BudgetControlRules', 'BudgetControlGroups',
-            'BudgetPlanningProcesses', 'BudgetPlanningStages', 'BudgetPlanningWorksheetColumns',
-            'BudgetRegisterEntryConfigurations', 'BudgetPlanningPriorities',
-            'BudgetPlanningLayouts', 'BudgetWorkflowConfigurations'
+            'BudgetParameters', 'BudgetModels', 'BudgetCycles',
+            'BudgetControlConfigurations', 'BudgetControlRules',
+            'BudgetControlGroups', 'BudgetPlanProcesses', 'BudgetPlanStages',
+            'BudgetPlanLayouts', 'BudgetPlanPriorities', 'BudgetPlanScenarios',
+            'BudgetAllocationTerms', 'BudgetCodes', 'BudgetDimensions',
+            'BudgetPlanParameters', 'BudgetPlanColumnRules',
+            'BudgetControlDocumentsAndJournals',
+            'BudgetControlDimensionAttributes'
         ]
     };
 
@@ -1256,7 +1123,11 @@ async function fetchODataPage(url) {
         headers: {
             'Accept': 'application/json',
             'OData-Version': '4.0',
-            'OData-MaxVersion': '4.0'
+            'OData-MaxVersion': '4.0',
+            // odata.maxpagesize switches D365F to server-driven paging: it always includes
+            // @odata.nextLink when more records remain, unlike client-driven $top which
+            // D365F can treat as an absolute record cap (no nextLink = no further pages).
+            'Prefer': 'odata.maxpagesize=5000'
         },
         credentials: 'include'
     });
@@ -1264,11 +1135,20 @@ async function fetchODataPage(url) {
         console.log(`⚠ ${url} returned ${response.status}`);
         return null;
     }
-    return response.json();
+    try {
+        return await response.json();
+    } catch (e) {
+        // D365F nextLink pages can occasionally return an HTML error page instead of
+        // JSON (e.g. session timeout, gateway error). Returning null lets fetchAllPages
+        // preserve the records already accumulated from earlier pages.
+        console.warn(`⚠ JSON parse failed for ${url}: ${e.message}`);
+        return null;
+    }
 }
 
 // Fetch ALL pages for a given starting URL by following @odata.nextLink.
-// D365F pages at 1000 records by default; we request 1000 per page for efficiency.
+// Server-driven paging (Prefer: odata.maxpagesize=5000) is used so D365F always
+// includes @odata.nextLink when more records remain — up to 5000 records per page.
 async function fetchAllPages(startUrl) {
     const allRecords = [];
     let nextUrl = startUrl;
@@ -1278,13 +1158,34 @@ async function fetchAllPages(startUrl) {
         console.log(`  Page ${pageNum}: ${nextUrl}`);
         const data = await fetchODataPage(nextUrl);
 
-        if (!data || !data.value) return null; // request failed
+        if (!data || !data.value) {
+            if (pageNum === 1) {
+                // First page failed — signal callODataAPI to try the next URL pattern.
+                return null;
+            }
+            // A subsequent page failed — return whatever was already accumulated rather
+            // than discarding all previous pages. This prevents the 1000-record cap that
+            // occurred when any mid-pagination error caused the entire result to be lost.
+            console.warn(`  Page ${pageNum} fetch failed; returning ${allRecords.length} records accumulated so far`);
+            break;
+        }
 
         allRecords.push(...data.value);
         console.log(`  → Page ${pageNum}: ${data.value.length} records (total so far: ${allRecords.length})`);
 
-        // Follow nextLink if present; D365F includes cross-company in the link automatically
-        nextUrl = data['@odata.nextLink'] || null;
+        // D365F nextLink can be relative — resolve it against the D365F origin so it
+        // works regardless of the extension's own origin.
+        // Also handle legacy OData v3 format which omits the '@' prefix.
+        const rawNextLink = data['@odata.nextLink'] || data['odata.nextLink'] || null;
+        if (rawNextLink) {
+            try {
+                nextUrl = new URL(rawNextLink, window.location.origin).toString();
+            } catch {
+                nextUrl = rawNextLink;
+            }
+        } else {
+            nextUrl = null;
+        }
         pageNum++;
 
         // Small delay between pages to avoid overloading the server
@@ -1296,45 +1197,197 @@ async function fetchAllPages(startUrl) {
 
 let oDataEntitySetIndexPromise = null;
 
+// Explicit D365F OData entity-set name aliases.
+// Many D365F OData entities drop module prefixes (Customer/Vendor/Bank) or use
+// internal AOT names that differ from the logical UI name. Listed in priority order
+// so the first alias that matches the service document is tried first.
+const ENTITY_ODATA_ALIASES = {
+    // ── Accounts Receivable ──────────────────────────────────────────────────────
+    // Payment days: line entity is embedded in the parent — no separate OData set
+    // 'PaymentDayLines' removed from AR list; handled via PaymentDays navigation.
+
+    // Collection letters — official OData public collection name from D365FO reference
+    CustomerCollectionLetterCodes:     ['CollectionLetterCoursesCds'],
+
+    // Interest — logical sidebar names mapped to confirmed D365FO OData entity names
+    CustomerInterestCodes:     ['CustomerPaymentInterestCodes', 'InterestCodes'],
+    CustomerInterestCodeLines: ['CustomerPaymentInterestCodes', 'InterestCodeLines', 'InterestRateLines'],
+
+    // Write-off — confirmed D365FO OData entity name first
+    CustomerWriteOffCodes:           ['WriteOffFinancialReasonsSetups', 'WriteOffCodes'],
+    CustomerWriteOffReasonCodeGroups: ['WriteOffReasonCodeGroups'],
+
+    // Charges / misc charges — D365F OData exposes charges as MarkupCodes
+    CustomerCharges:           ['MarkupCodes', 'ChargesCodes', 'CustomerChargesCodes'],
+    CustomerChargeGroupHeaders: ['ChargeGroups', 'MarkupGroups'],
+    CustomerChargeGroupLines:   ['ChargeGroupLines', 'MarkupGroupLines'],
+
+    // Agreement classifications
+    SalesAgreementClassifications: ['AgreementClassifications'],
+
+    // Statistics periods
+    CustomerStatisticsPeriods: ['StatisticsPeriods', 'CustomerStatisticPeriods'],
+
+    // Journal names — AR/AP logical names map to the shared public collection.
+    CustomerJournalNames: ['JournalNames'],
+
+    // Rebate programs
+    CustomerRebatePrograms:     ['RebatePrograms'],
+    CustomerRebateProgramLines: ['RebateProgramLines'],
+
+    // ── Accounts Payable ────────────────────────────────────────────────────────
+    // Posting profiles — use confirmed public collection names first.
+    VendorPostingProfiles:      ['PostingProfileHeaders', 'VendPostingProfiles'],
+    VendorPostingProfileLines:  ['PostingProfileLines', 'VendPostingProfileLines'],
+    VendorPostingProfileGroups: ['VendPostingProfileGroups'],
+
+    // Vendor categories / procurement categories
+    VendorCategories:            ['PurchCategories', 'ProcurementCategories'],
+    VendorProcurementCategories: ['PurchVendorCategories'],
+
+    // Vendor certificate types
+    VendorCertificateTypes: ['VendCertificateTypes'],
+
+    // Default offset accounts
+    VendorDefaultOffsetAccounts: ['VendDefaultOffsetAccounts'],
+
+    // Payment schedules — shared AR/AP entity in D365F OData
+    VendorPaymentSchedules:     ['PaymentSchedules'],
+    VendorPaymentScheduleLines: ['PaymentScheduleLines'],
+
+    // Invoice matching policies
+    VendorInvoiceMatchingPolicies:      ['VendInvoiceMatchingPolicies', 'InvoiceMatchingPolicies'],
+    VendorInvoiceMatchingPolicyDetails: ['VendInvoiceMatchingPolicyDetails', 'InvoiceMatchingPolicyDetails'],
+
+    // Vendor charges — same D365F entity as customer charges (MarkupCodes)
+    VendorCharges:           ['MarkupCodes', 'ChargesCodes', 'VendorChargesCodes'],
+    VendorChargeGroupHeaders: ['ChargeGroups', 'MarkupGroups'],
+    VendorChargeGroupLines:   ['ChargeGroupLines', 'MarkupGroupLines'],
+
+    // Journal names — same shared entity as AR
+    VendorJournalNames: ['JournalNames'],
+
+    // Positive pay formats
+    VendorPositivePayFormats: ['PositivePayFormats'],
+
+    // Procurement / purchase setup
+    PurchasePolicies: ['ProcurementPolicies', 'PurchPolicies'],
+    PurchaseSetup:    ['PurchParameters'],
+    ProcurementCategories: ['PurchCategories'],
+
+    // Invoice declaration types (country-specific)
+    VendorInvoiceDeclarationTypes:     ['InvoiceDeclarationTypes'],
+    VendorInvoiceDeclarationTypeLines: ['InvoiceDeclarationTypeLines'],
+
+    // ── Cash & Bank Management ──────────────────────────────────────────────────
+    // Bank account / transaction types — D365F uses shorter names
+    BankAccountTypes:            ['BankTypes'],
+    BankAccountTransactionTypes: ['BankTransactionTypes'],
+
+    // Statement & reconciliation import formats
+    BankStatementFormats:                    ['BankStatementFormat'],
+    AdvancedBankReconciliationImportFormats: ['BankReconciliationMatchFormats'],
+
+    // Cheque / negative pay layouts
+    BankChequeLayouts:          ['BankCheckLayouts', 'ChequeLayouts'],
+    BankNegativePaymentFormats: ['NegativePayFormats'],
+    BankChequePaymentControls:  ['ChequePaymentControls'],
+    BankReconciliationMatchRuleSets: ['ReconciliationMatchRuleSets'],
+
+    // ── Fixed Assets ────────────────────────────────────────────────────────────
+    // D365F AOT strips the "Fixed" prefix from most FA entity names internally.
+    FixedAssetParameters:              ['AssetParameters'],
+    FixedAssetGroupParameters:         ['AssetGroupParameters'],
+    FixedAssetBooks:                   ['AssetBooks'],
+    FixedAssetGroupBooks:              ['AssetGroupBooks'],
+    FixedAssetBookSetups:              ['AssetBookSetups'],
+    FixedAssetValueModelSetups:        ['AssetValueModelSetups', 'ValueModelSetups'],
+    FixedAssetDepreciationProfiles:    ['AssetDepreciationProfiles', 'DepreciationProfiles'],
+    AssetGroupBonus:                   ['AssetGroupBonuses'],
+    AssetGroupBonusBook:               ['AssetGroupBonusBooks'],
+    AssetBookReduction:                ['AssetBookReductions'],
+    FixedAssetPostingProfileLines:     ['AssetPostingProfileLines'],
+    // These were alternative names for the posting profile entity — covered by
+    // FixedAssetPostingProfiles already; aliases kept so the service doc lookup
+    // resolves them if D365F exposes them under a different set name.
+    AssetPostingProfileEntity:         ['AssetPostingProfiles'],
+    AssetPostingProfileDisposalEntity: ['AssetPostingProfileDisposals', 'FixedAssetPostingProfileDisposals'],
+    FixedAssetInsuranceTypes:          ['AssetInsuranceTypes'],
+    FixedAssetInsurancePolicies:       ['AssetInsurancePolicies'],
+    FixedAssetComponents:              ['AssetComponents'],
+    FixedAssetComponentGroups:         ['AssetComponentGroups'],
+    FixedAssetManufacturerModelNumbers: ['AssetManufacturerModelNumbers'],
+    FixedAssetConditionCodes:          ['AssetConditionCodes'],
+    FixedAssetBarCodeSetups:           ['AssetBarCodeSetups', 'AssetBarcodeSetups'],
+    FixedAssetDisposalParameters:      ['AssetDisposalParameters'],
+    FixedAssetAcquisitionMethods:      ['AssetAcquisitionMethods'],
+    ConsolidationAccountGroups:        ['ConsolidateAccountGroups'],
+    FixedAssetSpendLimits:             ['AssetSpendLimits'],
+    FixedAssetBookTypeMappings:        ['AssetBookTypeMappings'],
+};
+
 async function getODataEntitySetIndex() {
     if (oDataEntitySetIndexPromise) return oDataEntitySetIndexPromise;
 
     oDataEntitySetIndexPromise = (async () => {
         try {
             const baseUrl = window.location.origin;
-            const response = await fetch(`${baseUrl}/data`, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json',
-                    'OData-Version': '4.0',
-                    'OData-MaxVersion': '4.0'
-                },
-                credentials: 'include'
-            });
-
-            if (!response.ok) {
-                console.warn(`Could not read OData service document (/data): HTTP ${response.status}`);
-                return null;
-            }
-
-            const serviceDoc = await response.json();
-            const sets = Array.isArray(serviceDoc?.value) ? serviceDoc.value : [];
             const map = new Map();
+            const seen = new Set();
+            const maxPages = 50;
+            let pageCount = 0;
+            let url = `${baseUrl}/data`;
 
-            sets.forEach(entry => {
-                const name = entry?.name || entry?.Name || entry?.url || entry?.Url;
-                if (typeof name === 'string' && name.trim()) {
-                    map.set(name.toLowerCase(), name);
+            while (url) {
+                if (seen.has(url) || pageCount >= maxPages) {
+                    console.warn(`Aborting OData service document pagination after ${pageCount} page(s) — possible cycle or runaway nextLink`);
+                    // Partial index is unsafe: downstream treats any non-null map as
+                    // authoritative, so a half-loaded index produces false "not found" errors.
+                    oDataEntitySetIndexPromise = null;
+                    return null;
                 }
-            });
+                seen.add(url);
+                pageCount++;
+
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'OData-Version': '4.0',
+                        'OData-MaxVersion': '4.0'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    console.warn(`Could not read OData service document (/data): HTTP ${response.status}`);
+                    oDataEntitySetIndexPromise = null;
+                    return null;
+                }
+
+                const serviceDoc = await response.json();
+                const sets = Array.isArray(serviceDoc?.value) ? serviceDoc.value : [];
+                sets.forEach(entry => {
+                    const name = entry?.name || entry?.Name || entry?.url || entry?.Url;
+                    if (typeof name === 'string' && name.trim()) {
+                        map.set(name.toLowerCase(), name);
+                    }
+                });
+
+                // D365F may non-standardly paginate the service document; follow nextLink if present.
+                // Resolve relative URLs against the D365F origin so the extension origin isn't used.
+                const nextLink = serviceDoc?.['@odata.nextLink'];
+                url = nextLink ? new URL(nextLink, baseUrl).toString() : null;
+            }
 
             if (map.size > 0) {
-                console.log(`Loaded ${map.size} OData entity sets from service document.`);
+                console.log(`Loaded ${map.size} OData entity sets from service document (${pageCount} page(s)).`);
             }
 
-            return map;
+            return map.size > 0 ? map : null;
         } catch (error) {
             console.warn('Failed to load OData entity set index:', error.message);
+            oDataEntitySetIndexPromise = null;
             return null;
         }
     })();
@@ -1349,28 +1402,60 @@ function buildEntityNameCandidates(entityName) {
         if (!candidates.includes(name)) candidates.push(name);
     };
 
+    // Helper: add a name plus its simple singular/plural variant.
+    const addWithVariants = (name) => {
+        addCandidate(name);
+        if (name.endsWith('ies')) {
+            addCandidate(`${name.slice(0, -3)}y`);
+        } else if (name.endsWith('s')) {
+            addCandidate(name.slice(0, -1));
+        } else {
+            addCandidate(`${name}s`);
+        }
+    };
+
+    // 1. Explicit D365F OData alias names (highest priority — tried before generic variants).
+    if (ENTITY_ODATA_ALIASES[entityName]) {
+        ENTITY_ODATA_ALIASES[entityName].forEach(alias => addWithVariants(alias));
+    }
+
+    // 2. Exact name as declared in moduleODataMap.
     addCandidate(entityName);
 
+    // 3. With/without trailing "Entity" suffix.
     if (entityName.endsWith('Entity')) {
         addCandidate(entityName.slice(0, -6));
     } else {
         addCandidate(`${entityName}Entity`);
     }
 
+    // 4. Simple singular/plural flip.
     if (entityName.endsWith('ies')) {
+        // e.g. DimensionHierarchies → DimensionHierarchy
         addCandidate(`${entityName.slice(0, -3)}y`);
-    }
-    if (entityName.endsWith('s')) {
+    } else if (entityName.endsWith('s')) {
+        // e.g. MainAccounts → MainAccount
         addCandidate(entityName.slice(0, -1));
     } else {
+        // e.g. MainAccount → MainAccounts
         addCandidate(`${entityName}s`);
     }
 
+    // 5. Specifications ↔ SpecificationEntity convention.
     if (entityName.endsWith('Specifications')) {
         addCandidate(entityName.replace(/Specifications$/, 'SpecificationEntity'));
     }
     if (entityName.endsWith('SpecificationEntity')) {
         addCandidate(entityName.replace(/SpecificationEntity$/, 'Specifications'));
+    }
+
+    // 6. Try stripping common module prefixes — many D365F OData entity sets use
+    //    prefix-free names (e.g. CustomerInterestCodes → InterestCodes).
+    const MODULE_PREFIXES = ['Customer', 'Vendor', 'Bank', 'Purchase', 'Procurement', 'Sales'];
+    for (const prefix of MODULE_PREFIXES) {
+        if (entityName.startsWith(prefix) && entityName.length > prefix.length) {
+            addWithVariants(entityName.slice(prefix.length));
+        }
     }
 
     return candidates;
@@ -1417,12 +1502,15 @@ async function callODataAPI(entityName) {
 
         // cross-company=true is REQUIRED to get data from all legal entities — without it
         // D365F OData silently returns data for the current company only.
-        // $top=1000 is the D365F server-side maximum per page; nextLink handles the rest.
+        // We do NOT use $top here — instead the Prefer: odata.maxpagesize header (sent by
+        // fetchODataPage) switches D365F to server-driven paging, which guarantees
+        // @odata.nextLink is included whenever more records exist. With $top=N, D365F
+        // can treat N as an absolute limit and omit nextLink even when rows remain.
         for (const resolvedEntity of candidateNames) {
             const urlPatterns = [
-                `${baseUrl}/data/${resolvedEntity}?cross-company=true&$top=1000`,
-                `${baseUrl}/data/${resolvedEntity}?$top=1000`,
-                `${baseUrl}/_odata/v1/${resolvedEntity}?cross-company=true&$top=1000`,
+                `${baseUrl}/data/${resolvedEntity}?cross-company=true`,
+                `${baseUrl}/data/${resolvedEntity}`,
+                `${baseUrl}/_odata/v1/${resolvedEntity}?cross-company=true`,
             ];
 
             for (const url of urlPatterns) {
@@ -1491,7 +1579,7 @@ function showResults(records = []) {
     `;
 
     if (records.length > 0) {
-        showAlert('✓ Extraction completed! Found ' + records.length + ' configuration records.', 'success');
+        showAlert('✓ Extraction completed! Found ' + records.length + ' configuration records. Downloading file…', 'success');
     } else {
         const stats = sidebarState.lastExtractionStats;
         const details = stats
@@ -1499,6 +1587,10 @@ function showResults(records = []) {
             : '';
         showAlert('Extraction finished with 0 records. Verify OData access and selected legal entities.' + details, 'info');
     }
+
+    // Auto-download the file immediately after extraction completes.
+    // A short delay lets the results UI render before the browser's save dialog appears.
+    setTimeout(() => downloadFile(null), 300);
 }
 
 function buildComparisonSummary(records = [], selectedLE = []) {
@@ -1542,6 +1634,17 @@ function buildComparisonSummary(records = [], selectedLE = []) {
     };
 }
 
+// Build a filename using the D365 environment subdomain + datetime.
+// e.g.  contoso_2026-06-15_22-55-45.xlsx
+function generateExportFilename(extension) {
+    const hostname = window.location.hostname || 'd365';
+    const envPrefix = hostname.split('.')[0].toUpperCase() || 'D365';
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const datetime = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}_${pad(now.getHours())}-${pad(now.getMinutes())}-${pad(now.getSeconds())}`;
+    return `${envPrefix}_${datetime}.${extension}`;
+}
+
 function getExportRecords() {
     if (Array.isArray(sidebarState.lastCompletedRecords) && sidebarState.lastCompletedRecords.length > 0) {
         return sidebarState.lastCompletedRecords;
@@ -1553,7 +1656,7 @@ function getExportRecords() {
 }
 
 function downloadFile(event) {
-    event.preventDefault();
+    if (event) event.preventDefault();
 
     if (!sidebarState.includeData && !sidebarState.includeComparison) {
         showAlert('Please select at least one output option: Include Data or Include Comparison', 'error');
@@ -1640,7 +1743,7 @@ function downloadFile(event) {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `d365-config-${Date.now()}.${extension}`);
+        link.setAttribute('download', generateExportFilename(extension));
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -1748,6 +1851,15 @@ async function downloadExcelFile(data, exportRecords = []) {
             throw new Error('XLSX library not loaded. Please reload the extension.');
         }
 
+        // Maximum rows written to a single entity sheet. Excel itself supports ~1M rows
+        // but the SheetJS serialiser uses recursion internally — very large sheets cause
+        // "Maximum call stack size exceeded". 50,000 rows is a safe practical ceiling.
+        const MAX_ROWS_PER_SHEET = 50000;
+
+        // Yield to the event loop so the UI stays responsive and the JS call stack
+        // is fully unwound between heavy synchronous operations.
+        const yieldFrame = () => new Promise(resolve => setTimeout(resolve, 0));
+
         const records = Array.isArray(exportRecords) ? exportRecords : [];
         const wb = XLSX.utils.book_new();
         const includeData = Boolean(sidebarState.includeData);
@@ -1761,10 +1873,13 @@ async function downloadExcelFile(data, exportRecords = []) {
             : [...new Set(records.map(r => r.LegalEntity).filter(Boolean))].sort();
 
         // ── Summary sheet ────────────────────────────────────────────────────────
+        // Precompute per-entity counts in O(n) — avoids O(n²) filter-per-entity below.
         const entityCoverage = {};
+        const entityRecordCount = {};
         records.forEach(r => {
-            if (!entityCoverage[r.Entity]) entityCoverage[r.Entity] = new Set();
+            if (!entityCoverage[r.Entity]) { entityCoverage[r.Entity] = new Set(); entityRecordCount[r.Entity] = 0; }
             if (r.LegalEntity) entityCoverage[r.Entity].add(r.LegalEntity);
+            entityRecordCount[r.Entity]++;
         });
 
         const exportTitle = includeData && includeComparison
@@ -1808,7 +1923,8 @@ async function downloadExcelFile(data, exportRecords = []) {
                     const coverage = selectedLEs.length > 0
                         ? `${leCount}/${selectedLEs.length}`
                         : `${leCount}`;
-                    acc.rows.push([r.Entity, r.Module, records.filter(x => x.Entity === r.Entity).length, leCount, coverage]);
+                    // Use precomputed count — avoids O(n²) filter over 500k records
+                    acc.rows.push([r.Entity, r.Module, entityRecordCount[r.Entity] || 0, leCount, coverage]);
                 }
                 return acc;
             }, { seen: new Set(), rows: [] }).rows,
@@ -1834,6 +1950,10 @@ async function downloadExcelFile(data, exportRecords = []) {
         const usedSheetNames = new Set(['Summary']);
 
         for (const [entityName, entityRecords] of Object.entries(byEntity)) {
+            // Yield between sheets so the JS call stack is fully unwound — prevents
+            // "Maximum call stack size exceeded" when the workbook has many large sheets.
+            await yieldFrame();
+
             // Group raw OData records by LE
             const byLE = {};
             entityRecords.forEach(r => {
@@ -1865,7 +1985,14 @@ async function downloadExcelFile(data, exportRecords = []) {
             });
             const rawFieldList = Array.from(rawKeys);
             const rawHeaders = ['LegalEntity', ...rawFieldList];
-            const rawRows = entityRecords.map(r => {
+
+            // Cap to MAX_ROWS_PER_SHEET to prevent stack overflow in XLSX serialiser
+            const cappedRecords = entityRecords.length > MAX_ROWS_PER_SHEET
+                ? entityRecords.slice(0, MAX_ROWS_PER_SHEET)
+                : entityRecords;
+            const wasCapped = entityRecords.length > MAX_ROWS_PER_SHEET;
+
+            const rawRows = cappedRecords.map(r => {
                 const raw = r._rawFields || {};
                 return rawHeaders.map(k => {
                     if (k === 'LegalEntity') return r.LegalEntity || '';
@@ -1880,9 +2007,13 @@ async function downloadExcelFile(data, exportRecords = []) {
             const maxPerLE = leList.length > 0 ? Math.max(...leList.map(le => byLE[le].length)) : 0;
             const comparisonRows = maxPerLE <= 1
                 ? buildParameterSheet(byLE, leList)
-                : buildRecordSheet(byLE, leList, entityRecords);
+                : buildRecordSheet(byLE, leList, cappedRecords);
 
             const sheetData = [];
+            if (wasCapped) {
+                sheetData.push([`⚠ Sheet capped at ${MAX_ROWS_PER_SHEET.toLocaleString()} of ${entityRecords.length.toLocaleString()} total rows`]);
+                sheetData.push([]);
+            }
             if (includeData) {
                 sheetData.push([`=== ALL SOURCE DATA — ${entityName} ===`]);
                 sheetData.push(rawHeaders);
@@ -1922,12 +2053,14 @@ async function downloadExcelFile(data, exportRecords = []) {
         }
 
         // ── Download via Blob ────────────────────────────────────────────────────
+        // Yield before the serialisation step — XLSX.write is synchronous and heavy.
+        await yieldFrame();
         const wbBinary = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
         const blob = new Blob([wbBinary], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.setAttribute('href', url);
-        link.setAttribute('download', `d365-config-${Date.now()}.xlsx`);
+        link.setAttribute('download', generateExportFilename('xlsx'));
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();

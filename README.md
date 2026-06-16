@@ -20,215 +20,130 @@ The extension extracts configuration-focused master/setup data across 16 D365F m
 
 ### Core Configuration Entities:
 
-**General Ledger (59 entities):**
-- Chart of Accounts (Main Accounts, Categories, Hierarchies)
-- Ledgers & Ledger Parameters
-- Financial Dimensions (Attributes, Hierarchies, Sets)
-- Allocation Rules & Bases
-- Fiscal Calendars & Accounting Periods
+**General Ledger (27 entities):**
+- Chart of Accounts, Main Accounts & Categories
+- Ledgers, Journal Names & Account Structures
+- Allocation Rules, Sources & Destinations
+- Fiscal Calendars & Periods
 - Currencies & Exchange Rate Types
-- Posting Setup & Account Structures
-- Intercompany & Settlement Setup
+- Posting Definitions & Financial Reasons
+- Intercompany Accounts & Elimination Rules
 
-**Accounts Receivable (53 entities):**
+**Accounts Receivable (38 entities):**
 - Customer Groups & Posting Profiles
-- Payment Methods & Payment Schedules
-- Cash Discounts & Payment Terms
-- Collections & Interest Setup
-- Trade Agreements & Statistics
-- Charges Setup
+- Payment Methods, Schedules & Terms
+- Cash Discounts & Aging Periods
+- Collections, Interest & Write-Off Setup
+- Credit Management Groups & Rules
+- Direct Debit Mandates
+- Delivery Terms & Modes
 
-**Accounts Payable (52 entities):**
-- Vendor Groups & Posting Profiles
-- Payment Methods & Payment Schedules
-- Invoice Matching Policies
-- Charges & Vendor Categories
-- Purchase Policies & Procurement Categories
+**Accounts Payable (18 entities):**
+- Vendor Posting Profiles (PostingProfileHeaders / PostingProfileLines)
+- Vendor Payment Methods & Fees
+- Vendor Parameters & Form Setups
+- Invoice Policy Rule Types
+- Journal Names & Cheque Layouts
 
-**Cash & Bank Management (40 entities):**
-- Bank Accounts & Types
-- Bank Statement Formats
-- Reconciliation & Invoice Matching Rules
-- Cheque Layouts & Negative Payment Formats
-- Cash Flow Forecast Setup
+**Cash & Bank Management (19 entities):**
+- Bank Accounts, Groups & Parameters
+- Bank Cheque & Bill of Exchange Layouts
+- Reconciliation Match Rule Sets
+- Cash Accounts & Cash Ledgers
+- Payment Purpose Codes & IDs
 
-**Fixed Assets (42 entities):**
+**Fixed Assets (22 entities):**
 - Asset Groups & Parameters
-- Books & Depreciation Profiles
-- Posting Profiles & Insurance Types
-- Component & Classification Setup
+- Depreciation Profiles & Value Model Setups
+- Asset Books (V2), Acquisition Methods
+- Posting Profiles & Disposal Profiles
+- Asset Locations, Conditions & Major Types
+- Revaluation Groups & Reduction Entry Profiles
 
-**Tax (23 entities):**
-- Sales Tax Codes & Groups
+**Tax (26 entities):**
+- Tax Codes (TaxCodes), Tax Groups, Item Tax Groups
 - Tax Parameters & Authorities
-- Withholding Tax Setup
-- Tax Exempt Codes & Groups
-- Tax Components & Mapping
-- Tax Intervals & Jurisdictions
-- Tax Reporting & Intrastat Setup
-- Tax Transaction Code Mapping
+- Withholding Tax Codes, Groups & Periods
+- Tax Exempt Codes, Intrastat Commodity & Transaction Codes
+- Tax Reporting Code Entities & Registration Groups
+- Withholding Certificates & Component Groups
 
-**Inventory Management (27 entities):**
-- Item Groups & Model Groups
-- Warehouse Setup
-- Posting Profiles
-- Quality Setup
+**Inventory Management (24 entities):**
+- Item Groups, Model Groups & Dimension Groups
+- Inventory Parameters & Posting Setup
+- Warehouses & Reservation Hierarchies
+- Quality Groups, Test Groups & Instruments
+- Counting Groups & Blocking Reasons
 
-**Project Management (17 entities):**
-- Project Parameters & Groups
-- Categories & Posting Profiles
-- Resource & Billing Setup
+**Project Management (16 entities):**
+- Project Parameters, Groups & Contract Types
+- Categories, Category Groups & Posting Profiles
+- Resource Setup & Period Types
+- Worker Cost/Sales Prices & Forecast Models
+- Cost Templates & Estimate Models
 
 ### Additional Module Coverage:
 
-- Consolidation (24 entities)
-- Manufacturing (14 entities)
-- Human Resources (18 entities)
-- Procurement (16 entities)
-- Sales (18 entities)
+- Consolidation (3 entities)
+- Manufacturing (9 entities)
+- Human Resources (15 entities)
+- Procurement (9 entities)
+- Sales (10 entities)
 - Organization Admin (16 entities)
-- Budget (14 entities)
-- Cost Accounting (16 entities)
+- Budget (18 entities)
+- Cost Accounting (15 entities)
 
 ## 📋 Complete Entity Reference
 
-### Configuration Master Data Entities by Category
+Entity names below are the confirmed OData public collection names as exposed by D365F `/data` service document.
 
-**Tax & Duty Management:**
-- SalesTaxCodes
-- SalesTaxGroups
-- ItemSalesTaxGroups
-- TaxExemptCodes
-- TaxExemptCodeGroupHeaders
-- TaxExemptCodeGroupMembers
-- TaxAuthorities
-- TaxParameters
-- TaxSettlementPeriods
-- TaxRegistrationTypes
-- WithholdingTaxCodes
-- WithholdingTaxGroups
-- TaxComponentsTable
-- TaxTable
-- TaxIntrastatCommodityCodes
-- TaxJurisdictions
-- TaxJurisdictionGroups
-- TaxTransactionCodeMapping
-- TaxReportingCodes
-- TaxFreeAccounts
+### General Ledger
+`MainAccounts`, `MainAccountCategories`, `ChartOfAccounts`, `Ledgers`, `JournalNames`, `AccountStructures`, `LedgerAdvancedRuleStructures`, `LedgerEliminationRules`, `LedgerEliminationRuleLines`, `LedgerInterCompanyAccounts`, `LedgerAutomaticTransactionAccounts`, `LedgerFinancialReasons`, `AllocationRules`, `AllocationRuleSources`, `AllocationRuleDestinations`, `FiscalPeriods`, `FiscalCalendarsEntity`, `FiscalCalendarYears`, `PostingDefinitions`, `PostingDefinitionEntries`, `ConsolidateAccountGroups`, `JournalControls`, `AccrualSchemes`, `BalanceControls`, `DimensionRuleGoups`, `Currencies`, `ExchangeRateTypes`
 
-**Payment Setup:**
-- CustomerPaymentMethods
-- CustomerPaymentMethodSpecifications
-- CustomerPaymentSchedules
-- CustomerPaymentScheduleLines
-- VendorPaymentMethods
-- VendorPaymentMethodSpecifications
-- VendorPaymentSchedules
-- VendorPaymentScheduleLines
-- PaymentTerms
-- PaymentDays
-- PaymentDayLines
-- CashDiscounts
+### Accounts Receivable
+`AgingPeriodDefinitions`, `CashDiscounts`, `PaymentTerms`, `PaymentDays`, `PaymentDayLinesCds`, `PaymentSchedules`, `PaymentScheduleLines`, `DeliveryTerms`, `DeliveryModesV2`, `FormatCodes`, `DueDateLimits`, `PaymentCalendars`, `PaymentCalendarRules`, `PaymentCalendarExceptions`, `PaymentInstructions`, `ChargesTolerances`, `ElectronicPaymentTypes`, `ElectronicPaymentWays`, `ElectronicPaymentSegments`, `CustomerGroups`, `CustomerPostingProfiles`, `CustomerPostingProfileLines`, `CustomerParameters`, `CustomerPaymentMethods`, `CustomerPaymentMethodSpecifications`, `CustomerStatisticsGroups`, `CustomerPaymentFees`, `CustomerPaymentFineCodes`, `CustomerCollectionLetterCodes`, `CreditManagementGroups`, `CreditManagementParameters`, `CreditLimitRules`, `CreditLimitRuleLines`, `DirectDebitMandates`, `CustomerWriteOffCodes`, `CustomerInterestCodes`, `CustomerInterestCodeLines`, `CustomerJournalNames`
 
-**Posting Profiles:**
-- CustomerPostingProfiles
-- CustomerPostingProfileLines
-- VendorPostingProfiles
-- VendorPostingProfileLines
-- FixedAssetPostingProfiles
-- FixedAssetPostingProfileLines
-- InventPostingProfiles
-- InventInventoryProfileCustomerVendorLedgerEntity
-- ProjectPostingProfiles
-- ProjPostingProfileLines
-- ProjLedgerPostingDefinitionEntity
+### Accounts Payable
+`VendorParameters`, `VendorPaymentMethods`, `VendorPaymentMethodSpecifications`, `PostingProfileHeaders`, `PostingProfileLines`, `VendorFormSetups`, `VendorPaymentFees`, `VendorPaymentFineCodes`, `VendorPaymentInterestCodes`, `VendorExceptionGroups`, `VendorPriceToleranceGroups`, `VendInvoicePolicyRuleTypes`, `CustomChequeLayouts`, `VendorPaymFeeGroups`, `VendPaymModeBankAccounts`, `BankPaymentTransactionCodes`, `Tax1099Fields`, `VendorJournalNames`
 
-**Master Data Setup:**
-- Currencies
-- ExchangeRateTypes
-- NumberSequenceCodes
-- NumberSequenceReferences
-- NumberSequenceGroupReferences
-- LedgerParameters
-- GeneralLedgerParameters
-- Departments
-- Divisions
-- Teams
-- OperatingUnits
+### Cash & Bank Management
+`BankAccounts`, `BankParameters`, `BankGroups`, `BankTransactionTypes`, `BankTransactionGroups`, `BankCheckLayouts`, `BankBillOfExchangeLayouts`, `BankPromissoryNoteLayouts`, `BankPaymentIds`, `BankAccountTraps`, `ReconciliationMatchRuleSets`, `BankClientDocumentTypes`, `CashAccounts`, `CashLedgers`, `ImportModes`, `PaymentPurposeCodes`, `PaymFeeBankRules`, `DocumentFacilityGroups`, `DocumentFacilityTypes`
 
-**Ledger & Accounts:**
-- MainAccounts
-- MainAccountCategories
-- LedgerChartOfAccounts
-- MainAccountLegalEntityOverrides
-- MainAccountConsolidateAccounts
-- LedgerConsolidateAccountGroups
-- DimensionAttributes
-- DimensionHierarchies
-- DimensionHierarchyNodes
-- DimensionSets
-- DimensionSetLines
-- LedgerExchAdjPostingEntity
-- LedgerPostingJournalEntity
-- JournalizingTransactionPostingDefinitionEntity
+### Fixed Assets
+`FixedAssetGroups`, `AssetParameters`, `DepreciationProfiles`, `ValueModelSetups`, `FixedAssetPostingProfiles`, `FixedAssetPostingProfileDisposals`, `AcquisitionMethods`, `FixedAssetBooksV2`, `FixedAssetGroupValueModelSetups`, `AcceleratedDepreciationGroups`, `AssetActivityCodes`, `AssetConditions`, `AssetLocations`, `AssetMajorTypes`, `DepreciationGroups`, `AssetConsumptionUnits`, `InventoryFixedAssetTransferJournalNames`, `ReductionEntryProfiles`, `RevaluationGroups`, `DiscountRates`, `AssetStatementRows`, `AssetAllocationRules`
 
-**Banks & Cash Management:**
-- BankAccounts
-- BankAccountTypes
-- BankAccountTransactionTypes
-- BankParameters
-- BankStatementFormats
-- BankChequeLayouts
-- BankReconciliationMatchRules
-- CashFlowForecastAccounts
+### Tax
+`TaxParameters`, `TaxCodes`, `TaxGroups`, `TaxItemGroups`, `TaxExemptCodes`, `TaxAuthorities`, `TaxPeriodHeads`, `TaxPeriods`, `WithholdingTaxCodes`, `WithholdingGroups`, `WithholdingPeriods`, `TaxReportingCodeEntities`, `TaxRegistrationGroups`, `TaxPostingGroups`, `IntrastatCommodityCodes`, `IntrastatTransactionCodes`, `IntrastatCodes`, `IntrastatPorts`, `RegistrationTypes`, `TaxGroupDatas`, `TaxItemGroupHeadings`, `WithholdCertificates`, `WithholdAuthorities`, `WithholdComponentGroups`, `WithholdComponents`, `WithholdItemGroups`
 
-**Vendors & Customers:**
-- CustomerGroups
-- VendorGroups
-- VendorCategories
-- VendorCertificateTypes
-- CustomerCharges
-- VendorCharges
-- TradeAgreementJournalNames
-- SalesAgreementClassifications
+### Inventory Management
+`ItemGroups`, `InventoryParameters`, `InventoryModelGroups`, `InventoryModelGroupPolicies`, `InventoryDimensionGroups`, `InventoryStorageDimensionGroups`, `InventoryTrackingDimensionGroups`, `Warehouses`, `InventoryPostingSetup`, `InventPostingProfiles`, `ItemSetupSupplyTypes`, `InventInventoryLedgerPostingDefinitionEntity`, `InventInventoryProfileCustomerVendorLedgerEntity`, `InventoryReservationHierarchies`, `InventoryOwnerGroups`, `InventTestGroups`, `InventTestGroupMembers`, `InventQualityGroups`, `InventItemQualityGroups`, `InventTestInstruments`, `InventTestVariables`, `InventCountingGroups`, `InventBlockingReasons`, `InventTransferParameters`
 
-**Inventory & Warehouse:**
-- ItemGroups
-- InventoryParameters
-- InventoryModelGroups
-- InventoryDimensionGroups
-- Warehouses
-- InventoryPostingSetup
-- InventTestGroups
-- InventQualityGroups
-- InventLedgerPostingDefinitionCombinationEntity
-- InventInventoryLedgerPostingDefinitionEntity
-- InventProcurementLedgerPostingDefinitionEntity
-- InventProductionLedgerPostingDefinitionEntity
-- InventSalesLedgerPostingDefinitionEntity
-- InventStandardCostVarianceLedgerPostingDefinitionEntity
+### Project Management
+`ProjectParameters`, `ProjectGroups`, `ProjectContractTypes`, `ProjectCategories`, `ProjCategoryGroup`, `ProjectPostingProfiles`, `ProjLedgerPostingDefinitionEntity`, `ProjectHourUtilizationSetup`, `ProjectResourceSetup`, `ProjectPeriodTypes`, `ProjectWorkerCostPrice`, `ProjectWorkerSalesPrice`, `ProjectFundingSourceGroups`, `ProjectEstimateModels`, `ProjectForecastModels`, `ProjectCostTemplates`
 
-**Projects & Assets:**
-- ProjectParameters
-- ProjectGroups
-- ProjectCategories
-- ProjectPostingProfiles
-- FixedAssetGroups
-- FixedAssetParameters
-- FixedAssetBooks
-- FixedAssetDepreciationProfiles
+### Organization Admin
+`CompanyInfo`, `NumberSequenceGroups`, `OperatingUnits`, `OrganizationHierarchyTypes`, `OrganizationHierarchyPurposes`, `Departments`, `Divisions`, `Teams`, `NumberSequenceCodes`, `NumberSequenceReferences`, `NumberSequenceGroupReferences`, `AddressBooks`, `AddressBookParameters`, `CountryRegions`, `LanguageTexts`, `TimeZones`
 
-**Organization & Admin:**
-- CompanyInfo
-- LedgerIntercompanyAccounts
-- LedgerIntercompanyPosting
-- ReasonCodes
-- FiscalCalendars
-- FiscalCalendarPeriods
-- OrganizationHierarchyTypes
-- BudgetParameters
-- BudgetModels
-- BudgetControlConfiguration
+### Budget
+`BudgetParameters`, `BudgetModels`, `BudgetCycles`, `BudgetControlConfigurations`, `BudgetControlRules`, `BudgetControlGroups`, `BudgetPlanProcesses`, `BudgetPlanStages`, `BudgetPlanLayouts`, `BudgetPlanPriorities`, `BudgetPlanScenarios`, `BudgetAllocationTerms`, `BudgetCodes`, `BudgetDimensions`, `BudgetPlanParameters`, `BudgetPlanColumnRules`, `BudgetControlDocumentsAndJournals`, `BudgetControlDimensionAttributes`
+
+### Cost Accounting
+`CostAccountingLedger`, `CostAccountingParameters`, `CostElements`, `CostElementDimensions`, `CostCenters`, `CostAllocationBases`, `CostAllocationRules`, `CostAllocationPolicies`, `CostDistributionPolicies`, `CostAccountingOverheadRates`, `CostAccountingCostGroups`, `CostObjects`, `CostBehaviors`, `CostControlUnits`, `CostAccountingDimensions`
+
+### Manufacturing
+`ProductionParameters`, `BOMParameters`, `RouteGroups`, `RouteCostCategories`, `ProductionPoolGroups`, `ProductionFlushingPrinciples`, `BOMCalculationGroups`, `ProductionGroups`, `ProductionUnits`
+
+### Human Resources
+`HumanResourceParameters`, `HumanResourceJobs`, `HumanResourceJobFunctions`, `HumanResourceDepartments`, `BenefitTypes`, `BenefitPlans`, `CompensationPlans`, `CompensationLevels`, `CompensationGrids`, `CompensationPayFrequency`, `CompensationStructure`, `PositionTypes`, `PositionHierarchyTypes`, `JobTaskAreas`, `BenefitEligibilityRules`
+
+### Procurement
+`VendorGroups`, `ProcurementProductCategories`, `VendVendorCertificationTypeEntities`, `VendorReasons`, `PriceTolerances`, `VendorInvoiceTotalTolerances`, `LineDiscountVendorGroups`, `MultilineDiscountVendorGroups`, `TotalDiscountVendorGroups`
+
+### Sales
+`TradeAgreementJournalNames`, `SalesOrderPools`, `SalesOrderHoldCodes`, `ReturnDispositionCodes`, `SalesCarriers`, `CustomerChargeGroup`, `LineDiscountCustomerGroups`, `MultilineDiscountCustomerGroups`, `TotalDiscountCustomerGroups`, `SalesContactPersonTitles`
+
+### Consolidation
+`ConsolidationAccountGroups`, `LedgerEliminationRules`, `LedgerEliminationRuleLines`
 
 ## 🚀 Installation
 
@@ -426,8 +341,8 @@ To add additional entities, edit `src/sidebar/sidebar.js` in `moduleODataMap`:
 ```javascript
 'Tax': [
    'TaxParameters',
-   'SalesTaxCodes',
-   'YourNewEntity' // Add new OData entity here
+   'TaxCodes',        // correct OData name (not SalesTaxCodes)
+   'YourNewEntity'    // Add new OData collection name here
 ]
 ```
 
@@ -453,10 +368,13 @@ To add additional entities, edit `src/sidebar/sidebar.js` in `moduleODataMap`:
 3. Try extracting fewer legal entities at once
 4. Check network connectivity
 
-### Excel file corrupted:
-1. Ensure Excel is up-to-date
-2. Try exporting as CSV instead
-3. Check browser disk space
+### Excel file corrupted or "Maximum call stack size exceeded":
+1. Very large exports (400k+ records) can exhaust the browser's JS call stack during serialisation.
+   - Each entity sheet is capped at **50,000 rows** — a `⚠` note appears on capped sheets.
+   - If you need all rows for a high-volume entity, export that module separately.
+2. Ensure Excel is up-to-date
+3. Try exporting as CSV instead for very large datasets
+4. Check browser disk space
 
 ### Missing data in results:
 1. Verify all selected entities exist in D365F

@@ -12,24 +12,24 @@ Current module/entity coverage in the extractor:
 
 | Module | Configured Entities |
 |---|---|
-| General Ledger | 59 |
-| Accounts Receivable | 53 |
-| Accounts Payable | 52 |
-| Cash & Bank Management | 40 |
-| Fixed Assets | 42 |
-| Tax | 23 |
-| Consolidation | 24 |
-| Inventory Management | 27 |
-| Project Management | 17 |
-| Manufacturing | 14 |
-| Human Resources | 18 |
-| Procurement | 16 |
-| Sales | 18 |
+| General Ledger | 27 |
+| Accounts Receivable | 38 |
+| Accounts Payable | 18 |
+| Cash & Bank Management | 19 |
+| Fixed Assets | 22 |
+| Tax | 26 |
+| Consolidation | 3 |
+| Inventory Management | 24 |
+| Project Management | 16 |
+| Manufacturing | 9 |
+| Human Resources | 15 |
+| Procurement | 9 |
+| Sales | 10 |
 | Organization Admin | 16 |
-| Budget | 14 |
-| Cost Accounting | 16 |
+| Budget | 18 |
+| Cost Accounting | 15 |
 
-Total configured extraction list: 449 entities across 16 modules.
+Total configured extraction list: 285 entities across 16 modules.
 
 ## Supported Configuration Categories
 
@@ -37,27 +37,24 @@ Total configured extraction list: 449 entities across 16 modules.
 Located in: **General Ledger** and **Tax** modules
 
 #### Tax Codes & Groups:
-- `SalesTaxCodes` - Sales tax code master
-- `SalesTaxGroups` - Groups of sales tax codes
-- `ItemSalesTaxGroups` - Tax groups assigned to items
+- `TaxCodes` - Sales tax code master (OData name — not SalesTaxCodes)
+- `TaxGroups` - Groups of sales tax codes (OData name — not SalesTaxGroups)
+- `TaxItemGroups` - Tax groups assigned to items (OData name — not ItemSalesTaxGroups)
 - `WithholdingTaxCodes` - Withholding tax codes
-- `WithholdingTaxGroups` - Withholding tax code groups
+- `WithholdingGroups` - Withholding tax code groups
 - `TaxExemptCodes` - Tax exemption codes
-- `TaxExemptCodeGroupHeaders` - Exempt code group headers
-- `TaxExemptCodeGroupMembers` - Exempt code group members
 
 #### Tax Setup & Parameters:
 - `TaxParameters` - Global tax parameters
 - `TaxAuthorities` - Tax authorities
-- `TaxSettlementPeriods` - Tax settlement/reporting periods
-- `TaxRegistrationTypes` - Tax registration types
-- `TaxTable` - Main tax table for configuration
-- `TaxComponentsTable` - Tax components
-- `TaxTransactionCodeMapping` - Transaction code mappings
-- `TaxIntrastatCommodityCodes` - Intrastat commodity codes
-- `TaxJurisdictions` - Tax jurisdictions
-- `TaxJurisdictionGroups` - Tax jurisdiction grouping
-- `TaxIntervals` - Tax intervals for periodic calculations
+- `TaxPeriodHeads` / `TaxPeriods` - Tax settlement/reporting periods
+- `TaxRegistrationGroups` - Tax registration types
+- `TaxPostingGroups` - Tax posting configuration
+- `TaxReportingCodeEntities` - Tax reporting codes
+- `IntrastatCommodityCodes` - Intrastat commodity codes
+- `IntrastatTransactionCodes` / `IntrastatCodes` / `IntrastatPorts` - Intrastat setup
+- `RegistrationTypes` - Registration types
+- `WithholdCertificates`, `WithholdAuthorities`, `WithholdComponentGroups`, `WithholdComponents`, `WithholdItemGroups` - Withholding detail setup
 - `TaxReportingCodes` - Tax reporting codes
 - `TaxFreeAccounts` - Tax-free accounts
 
