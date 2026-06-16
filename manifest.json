@@ -15,6 +15,9 @@
     "*://*.crm*.dynamics.com/*",
     "*://*.onmicrosoft.com/*"
   ],
+  "background": {
+    "service_worker": "src/background/background.js"
+  },
   "action": {
     "default_popup": "src/popup/toggle.html",
     "default_title": "D365 Finance Config Extractor",
