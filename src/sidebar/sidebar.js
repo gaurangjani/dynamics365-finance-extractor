@@ -762,7 +762,7 @@ async function extractRealConfigurationData() {
             'TotalDiscountVendorGroups'
         ],
         'Organization Admin': [
-            'CompanyInfo', 'NumberSequenceGroups', 'OperatingUnits',
+            'LegalEntities', 'CompanyInfo', 'NumberSequenceGroups', 'OperatingUnits',
             'OrganizationHierarchyTypes', 'OrganizationHierarchyPurposes',
             'Departments', 'Divisions', 'Teams',
             'NumberSequenceCodes', 'NumberSequenceReferences',
