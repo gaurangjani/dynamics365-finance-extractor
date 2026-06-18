@@ -71,8 +71,8 @@ const D365F_MODULES = {
     'Human Resources': { color: '#F39C12', count: 15 },
     'Procurement': { color: '#34495E', count: 9 },
     'Sales': { color: '#C0392B', count: 10 },
-    'Organization Admin': { color: '#8E44AD', count: 16 },
-    'Tax': { color: '#E67E22', count: 26 },
+    'Organization Admin': { color: '#8E44AD', count: 17 },
+    'Tax': { color: '#E67E22', count: 30 },
     'Budget': { color: '#27AE60', count: 18 },
     'Cost Accounting': { color: '#1F77B4', count: 15 }
 };
@@ -768,12 +768,14 @@ async function extractRealConfigurationData() {
             'NumberSequenceCodes', 'NumberSequenceReferences',
             'NumberSequenceGroupReferences',
             'AddressBooks', 'AddressBookParameters', 'CountryRegions',
-            'LanguageTexts', 'TimeZones'
+            'LanguageTexts', 'TimeZones', 'LegalEntityPostalAddresses'
         ],
         'Tax': [
             'TaxParameters', 'TaxCodes', 'TaxGroups', 'TaxItemGroups',
             'TaxExemptCodes', 'TaxAuthorities', 'TaxPeriodHeads', 'TaxPeriods',
             'WithholdingTaxCodes', 'WithholdingGroups', 'WithholdingPeriods',
+            'WithholdingTaxLedgerPostingGroups', 'WithholdingTaxLimits',
+            'WithholdingTaxCodeValues', 'WithholdingTaxGroupDetails',
             'TaxReportingCodeEntities', 'TaxRegistrationGroups',
             'TaxPostingGroups', 'IntrastatCommodityCodes',
             'IntrastatTransactionCodes', 'IntrastatCodes', 'IntrastatPorts',

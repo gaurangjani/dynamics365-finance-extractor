@@ -62,10 +62,11 @@ The extension extracts configuration-focused master/setup data across 16 D365F m
 - Asset Locations, Conditions & Major Types
 - Revaluation Groups & Reduction Entry Profiles
 
-**Tax (26 entities):**
+**Tax (30 entities):**
 - Tax Codes (TaxCodes), Tax Groups, Item Tax Groups
 - Tax Parameters & Authorities
 - Withholding Tax Codes, Groups & Periods
+- Withholding Tax Ledger Posting Groups, Limits, Code Values & Group Details
 - Tax Exempt Codes, Intrastat Commodity & Transaction Codes
 - Tax Reporting Code Entities & Registration Groups
 - Withholding Certificates & Component Groups
@@ -91,7 +92,7 @@ The extension extracts configuration-focused master/setup data across 16 D365F m
 - Human Resources (15 entities)
 - Procurement (9 entities)
 - Sales (10 entities)
-- Organization Admin (16 entities)
+- Organization Admin (17 entities)
 - Budget (18 entities)
 - Cost Accounting (15 entities)
 
@@ -115,7 +116,7 @@ Entity names below are the confirmed OData public collection names as exposed by
 `FixedAssetGroups`, `AssetParameters`, `DepreciationProfiles`, `ValueModelSetups`, `FixedAssetPostingProfiles`, `FixedAssetPostingProfileDisposals`, `AcquisitionMethods`, `FixedAssetBooksV2`, `FixedAssetGroupValueModelSetups`, `AcceleratedDepreciationGroups`, `AssetActivityCodes`, `AssetConditions`, `AssetLocations`, `AssetMajorTypes`, `DepreciationGroups`, `AssetConsumptionUnits`, `InventoryFixedAssetTransferJournalNames`, `ReductionEntryProfiles`, `RevaluationGroups`, `DiscountRates`, `AssetStatementRows`, `AssetAllocationRules`
 
 ### Tax
-`TaxParameters`, `TaxCodes`, `TaxGroups`, `TaxItemGroups`, `TaxExemptCodes`, `TaxAuthorities`, `TaxPeriodHeads`, `TaxPeriods`, `WithholdingTaxCodes`, `WithholdingGroups`, `WithholdingPeriods`, `TaxReportingCodeEntities`, `TaxRegistrationGroups`, `TaxPostingGroups`, `IntrastatCommodityCodes`, `IntrastatTransactionCodes`, `IntrastatCodes`, `IntrastatPorts`, `RegistrationTypes`, `TaxGroupDatas`, `TaxItemGroupHeadings`, `WithholdCertificates`, `WithholdAuthorities`, `WithholdComponentGroups`, `WithholdComponents`, `WithholdItemGroups`
+`TaxParameters`, `TaxCodes`, `TaxGroups`, `TaxItemGroups`, `TaxExemptCodes`, `TaxAuthorities`, `TaxPeriodHeads`, `TaxPeriods`, `WithholdingTaxCodes`, `WithholdingGroups`, `WithholdingPeriods`, `WithholdingTaxLedgerPostingGroups`, `WithholdingTaxLimits`, `WithholdingTaxCodeValues`, `WithholdingTaxGroupDetails`, `TaxReportingCodeEntities`, `TaxRegistrationGroups`, `TaxPostingGroups`, `IntrastatCommodityCodes`, `IntrastatTransactionCodes`, `IntrastatCodes`, `IntrastatPorts`, `RegistrationTypes`, `TaxGroupDatas`, `TaxItemGroupHeadings`, `WithholdCertificates`, `WithholdAuthorities`, `WithholdComponentGroups`, `WithholdComponents`, `WithholdItemGroups`
 
 ### Inventory Management
 `ItemGroups`, `InventoryParameters`, `InventoryModelGroups`, `InventoryModelGroupPolicies`, `InventoryDimensionGroups`, `InventoryStorageDimensionGroups`, `InventoryTrackingDimensionGroups`, `Warehouses`, `InventoryPostingSetup`, `InventPostingProfiles`, `ItemSetupSupplyTypes`, `InventInventoryLedgerPostingDefinitionEntity`, `InventInventoryProfileCustomerVendorLedgerEntity`, `InventoryReservationHierarchies`, `InventoryOwnerGroups`, `InventTestGroups`, `InventTestGroupMembers`, `InventQualityGroups`, `InventItemQualityGroups`, `InventTestInstruments`, `InventTestVariables`, `InventCountingGroups`, `InventBlockingReasons`, `InventTransferParameters`
@@ -124,7 +125,7 @@ Entity names below are the confirmed OData public collection names as exposed by
 `ProjectParameters`, `ProjectGroups`, `ProjectContractTypes`, `ProjectCategories`, `ProjCategoryGroup`, `ProjectPostingProfiles`, `ProjLedgerPostingDefinitionEntity`, `ProjectHourUtilizationSetup`, `ProjectResourceSetup`, `ProjectPeriodTypes`, `ProjectWorkerCostPrice`, `ProjectWorkerSalesPrice`, `ProjectFundingSourceGroups`, `ProjectEstimateModels`, `ProjectForecastModels`, `ProjectCostTemplates`
 
 ### Organization Admin
-`CompanyInfo`, `NumberSequenceGroups`, `OperatingUnits`, `OrganizationHierarchyTypes`, `OrganizationHierarchyPurposes`, `Departments`, `Divisions`, `Teams`, `NumberSequenceCodes`, `NumberSequenceReferences`, `NumberSequenceGroupReferences`, `AddressBooks`, `AddressBookParameters`, `CountryRegions`, `LanguageTexts`, `TimeZones`
+`CompanyInfo`, `NumberSequenceGroups`, `OperatingUnits`, `OrganizationHierarchyTypes`, `OrganizationHierarchyPurposes`, `Departments`, `Divisions`, `Teams`, `NumberSequenceCodes`, `NumberSequenceReferences`, `NumberSequenceGroupReferences`, `AddressBooks`, `AddressBookParameters`, `CountryRegions`, `LanguageTexts`, `TimeZones`, `LegalEntityPostalAddresses`
 
 ### Budget
 `BudgetParameters`, `BudgetModels`, `BudgetCycles`, `BudgetControlConfigurations`, `BudgetControlRules`, `BudgetControlGroups`, `BudgetPlanProcesses`, `BudgetPlanStages`, `BudgetPlanLayouts`, `BudgetPlanPriorities`, `BudgetPlanScenarios`, `BudgetAllocationTerms`, `BudgetCodes`, `BudgetDimensions`, `BudgetPlanParameters`, `BudgetPlanColumnRules`, `BudgetControlDocumentsAndJournals`, `BudgetControlDimensionAttributes`
