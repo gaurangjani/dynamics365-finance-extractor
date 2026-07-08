@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<style>
+  html, body { margin:0; padding:0; background:transparent; }
+  svg { display:block; width:100vw; height:100vh; }
+</style>
+</head>
+<body>
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2AA2F0"/>
+      <stop offset="100%" stop-color="#0058A3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="128" height="128" rx="26" fill="url(#bg)"/>
+
+  <!-- Table / grid card -->
+  <rect x="27" y="30" width="58" height="58" rx="7" fill="#FFFFFF"/>
+  <!-- grid lines -->
+  <rect x="27" y="30" width="58" height="16" rx="7" fill="#EAF3FC"/>
+  <rect x="27" y="30" width="58" height="16" rx="7" fill="none"/>
+  <line x1="27" y1="46" x2="85" y2="46" stroke="#B9D8F2" stroke-width="2"/>
+  <line x1="27" y1="63" x2="85" y2="63" stroke="#B9D8F2" stroke-width="2"/>
+  <line x1="56" y1="30" x2="56" y2="88" stroke="#B9D8F2" stroke-width="2"/>
+
+  <!-- Extraction badge (arrow out) -->
+  <circle cx="93" cy="93" r="26" fill="#0B8A3D"/>
+  <circle cx="93" cy="93" r="26" fill="none" stroke="#FFFFFF" stroke-width="3"/>
+  <path d="M 82 93 L 104 93 M 96 83 L 106 93 L 96 103" fill="none" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+</body>
+</html>
