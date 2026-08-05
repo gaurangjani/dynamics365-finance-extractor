@@ -5,9 +5,7 @@
   "version": "1.0.0",
   "permissions": [
     "activeTab",
-    "scripting",
     "storage",
-    "webRequest",
     "downloads"
   ],
   "host_permissions": [
