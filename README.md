@@ -4,6 +4,11 @@
 
 A powerful Chrome/Edge browser extension for extracting and comparing Dynamics 365 Finance configuration data across multiple legal entities with multi-format export support.
 
+## 📥 Install
+
+- **Microsoft Edge Add-ons**: [D365 Finance Configuration Extractor](https://microsoftedge.microsoft.com/addons/detail/d365-finance-configuratio/mibkfcadljpbjbbaaoolfhaaaciamjom) ✅ Live
+- **Chrome Web Store**: pending review
+
 ## 🎯 Features
 
 - **Multi-Legal Entity Support**: Extract configuration from 100+ legal entities simultaneously
